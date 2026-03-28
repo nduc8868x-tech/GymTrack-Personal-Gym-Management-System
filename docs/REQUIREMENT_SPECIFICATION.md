@@ -400,19 +400,22 @@ Profile & Settings
 
 | Layer | Technology | Lý do chọn |
 |-------|-----------|-----------|
-| **Frontend** | Next.js 14 (App Router) | SSR/SSG, routing tốt, ecosystem lớn |
-| **UI** | Tailwind CSS + shadcn/ui | Nhanh, đẹp, accessible |
-| **Charts** | Recharts | Nhẹ, dễ tùy chỉnh với React |
-| **State** | Zustand + TanStack React Query | State management + server state caching |
-| **Backend** | Node.js + Express.js + TypeScript | RESTful API, type-safe |
-| **Auth** | JWT + bcrypt | Stateless auth, tự implement |
-| **Database** | PostgreSQL | Relational, mạnh cho analytics query |
-| **ORM** | Prisma | Type-safe, migration dễ |
-| **AI** | Claude API (Anthropic) | Phân tích + tư vấn fitness/nutrition |
-| **Food API** | Open Food Facts API | Free nutrition database |
-| **Notifications** | Web Push API + node-cron | Nhắc lịch tập |
-| **File Storage** | Cloudinary | Upload ảnh progress |
-| **Deployment** | Vercel (FE) + Railway (BE) | Dễ deploy, free tier |
+| **Frontend** | Next.js 15 (App Router) | SSR/SSG, file-based routing, ecosystem lớn, deploy tốt trên Vercel |
+| **UI** | Tailwind CSS + shadcn/ui | Utility-first CSS, shadcn cung cấp accessible components sẵn, không lock-in |
+| **Charts** | Recharts | Native React (không dùng canvas), nhẹ, dễ tùy chỉnh, phù hợp progress/workout charts |
+| **Forms** | react-hook-form + Zod | Quản lý form state + validation schema; Zod dùng chung với BE để đảm bảo nhất quán |
+| **State** | Zustand + TanStack React Query | Zustand cho client state (auth, active session); React Query cho server state + caching + refetch |
+| **Backend** | Node.js + Express.js + TypeScript | RESTful API, type-safe, quen thuộc với JS stack, dễ tích hợp thư viện |
+| **Auth** | JWT (access 15p + refresh 7 ngày) + bcrypt | Stateless, tự implement để kiểm soát hoàn toàn; bcrypt hash password |
+| **Database** | PostgreSQL | Relational, hỗ trợ tốt analytics query (progress charts, volume tracking) |
+| **ORM** | Prisma | Type-safe queries, auto-generate types từ schema, migration dễ quản lý |
+| **AI** | Claude API (Anthropic) | Phân tích workout/nutrition data, tư vấn cá nhân hóa, context-aware conversation |
+| **Email** | Resend | Gửi email reset password & reminder fallback cho iOS; free tier 3,000 email/tháng |
+| **Food API** | Open Food Facts API | Free, open-source nutrition database với 3M+ sản phẩm |
+| **Notifications** | Web Push API + node-cron | Web Push cho desktop/Android; node-cron schedule check lịch hàng phút |
+| **File Storage** | Cloudinary | Upload & optimize ảnh progress; free tier 25GB storage |
+| **Deployment** | Vercel (FE) + Railway (BE + DB) | Vercel tối ưu cho Next.js; Railway managed PostgreSQL + auto-deploy từ GitHub |
+| **Monitoring** | Sentry (could-have) | Track runtime errors FE + BE trên production; free tier 5,000 errors/tháng |
 
 ---
 

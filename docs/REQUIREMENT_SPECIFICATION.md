@@ -236,6 +236,21 @@ Người tập gym thường không có công cụ thống nhất để theo dõ
 | **Browser Support** | Web Push Notification **không hỗ trợ trên iOS Safari < 16.4** — fallback: gửi reminder qua email thay thế |
 | **API Fallback** | Open Food Facts API down → hiện thông báo, cho phép nhập thủ công; Claude API timeout (>15s) → hiện thông báo lỗi, không crash app |
 
+#### Validation Constraints
+
+Áp dụng bằng Zod schema ở cả FE và BE:
+
+| Field | Constraint |
+|-------|-----------|
+| `password` | min 8 ký tự, ≥1 chữ cái + ≥1 chữ số |
+| `weight_kg` | 20 – 500 kg |
+| `height_cm` | 100 – 250 cm |
+| `reps` | 1 – 100 |
+| `set_number` | 1 – 20 |
+| `quantity_g` (food log) | 1 – 5000 g |
+| `body_fat_pct` | 1 – 60% |
+| `rest_seconds` | 10 – 600 giây |
+
 ---
 
 ### 1.4 User Specification
@@ -474,6 +489,8 @@ Backend gọi external services (không phải DB):
 
 4. **Cron job reminder:** node-cron chạy mỗi phút trong BE process → query `scheduled_workouts` sắp đến giờ → gửi Web Push (Android/Desktop) hoặc email qua Resend (iOS fallback)
 
+   > **Recovery khi server restart:** Khi server start, query tất cả `scheduled_workouts` có `scheduled_date = hôm nay` AND `scheduled_time <= NOW()` AND `reminder_sent = false` → gửi ngay (catch-up missed reminders). `reminder_sent = true` sau khi gửi thành công → tránh duplicate. Web Push thất bại → retry 1 lần sau 30 giây → nếu vẫn fail → fallback email qua Resend.
+
 5. **Upload ảnh:** FE gửi file lên BE → BE upload lên Cloudinary → lưu `photo_url` vào DB
 
 6. **Tìm thực phẩm:** FE gọi BE → BE gọi Open Food Facts API → transform & trả về FE (BE làm proxy để ẩn rate limit và cache kết quả)
@@ -630,6 +647,17 @@ gymtrack/
 | PUT | `/api/auth/profile` | — | Cập nhật profile (tên, chiều cao, giới tính...) |
 | PUT | `/api/auth/settings` | — | Cập nhật settings (đơn vị, timezone, notification) |
 
+**Key Request Bodies — AUTH:**
+
+```json
+POST /api/auth/register  → { "email": "string", "password": "string", "name": "string" }
+POST /api/auth/login     → { "email": "string", "password": "string" }
+POST /api/auth/reset-password → { "token": "string", "new_password": "string" }
+PUT  /api/auth/profile   → { "name": "string", "height_cm": 175, "gender": "male", "birthdate": "2000-01-01" }
+```
+
+---
+
 #### EXERCISES
 
 | Method | Endpoint | Query Params | Mô tả |
@@ -638,6 +666,14 @@ gymtrack/
 | POST | `/api/exercises` | — | Tạo bài tập custom |
 | GET | `/api/exercises/:id` | — | Chi tiết 1 bài tập + PR history |
 | DELETE | `/api/exercises/:id` | — | Xóa bài tập custom (soft delete) |
+
+**Key Request Bodies — EXERCISES:**
+
+```json
+POST /api/exercises → { "name": "string", "primary_muscle": "chest", "equipment": "barbell", "description": "string?" }
+```
+
+---
 
 #### WORKOUT PLANS
 
@@ -656,6 +692,19 @@ gymtrack/
 | PUT | `/api/plans/:id/days/:dayId/exercises/:exId` | — | Cập nhật sets/reps/rest |
 | DELETE | `/api/plans/:id/days/:dayId/exercises/:exId` | — | Xóa bài tập khỏi plan day |
 
+**Key Request Bodies — WORKOUT PLANS:**
+
+```json
+POST /api/plans → { "name": "string", "description": "string?", "split_type": "ppl", "duration_weeks": 8 }
+POST /api/plans/:id/days → { "day_of_week": 1, "name": "Push Day", "order_index": 1 }
+POST /api/plans/:id/days/:dayId/exercises → {
+  "exercise_id": "uuid", "sets": 4, "reps_min": 8, "reps_max": 12,
+  "rest_seconds": 90, "order_index": 1, "notes": "string?"
+}
+```
+
+---
+
 #### WORKOUT SESSIONS
 
 | Method | Endpoint | Query Params | Mô tả |
@@ -667,6 +716,19 @@ gymtrack/
 | POST | `/api/workouts/sessions/:id/sets` | — | Log 1 set (exercise, reps, kg) |
 | DELETE | `/api/workouts/sessions/:id/sets/:setId` | — | Xóa set log nhầm |
 
+**Key Request Bodies — WORKOUT SESSIONS:**
+
+```json
+POST /api/workouts/sessions → { "name": "string?", "plan_day_id": "uuid?", "started_at": "ISO8601" }
+POST /api/workouts/sessions/:id/sets → {
+  "exercise_id": "uuid", "set_number": 1, "reps": 10,
+  "weight_kg": 80.0, "duration_seconds": null
+}
+PUT /api/workouts/sessions/:id → { "ended_at": "ISO8601", "notes": "string?" }
+```
+
+---
+
 #### SCHEDULE
 
 | Method | Endpoint | Query Params | Mô tả |
@@ -676,6 +738,14 @@ gymtrack/
 | PUT | `/api/schedule/:id` | — | Cập nhật lịch (đổi giờ, ngày) |
 | DELETE | `/api/schedule/:id` | — | Hủy / xóa lịch tập |
 
+**Key Request Bodies — SCHEDULE:**
+
+```json
+POST /api/schedule → { "plan_day_id": "uuid?", "name": "string", "scheduled_date": "YYYY-MM-DD", "scheduled_time": "HH:MM" }
+```
+
+---
+
 #### PROGRESS
 
 | Method | Endpoint | Query Params | Mô tả |
@@ -684,6 +754,19 @@ gymtrack/
 | POST | `/api/progress/measurements` | — | Log số đo mới (cân nặng, số đo, ảnh) |
 | GET | `/api/progress/charts` | `type`, `from`, `to` | Data cho biểu đồ (`type`: weight/volume/strength) |
 | GET | `/api/progress/records` | — | Tất cả Personal Records theo từng bài tập |
+
+**Key Request Bodies — PROGRESS:**
+
+```json
+POST /api/progress/measurements → {
+  "measured_at": "YYYY-MM-DD", "weight_kg": 75.5, "body_fat_pct": 18.0,
+  "chest_cm": 100, "waist_cm": 80, "hips_cm": 95,
+  "left_arm_cm": 35, "right_arm_cm": 35, "left_thigh_cm": 55, "right_thigh_cm": 55,
+  "photo_url": "string?", "notes": "string?"
+}
+```
+
+---
 
 #### NUTRITION
 
@@ -698,6 +781,16 @@ gymtrack/
 | GET | `/api/nutrition/foods/search` | `q`, `limit` | Tìm thực phẩm (Open Food Facts + custom) |
 | POST | `/api/nutrition/foods` | — | Thêm thực phẩm custom |
 
+**Key Request Bodies — NUTRITION:**
+
+```json
+POST /api/nutrition/plan → { "name": "string?", "daily_calories": 2500, "protein_g": 180, "carbs_g": 250, "fat_g": 80, "start_date": "YYYY-MM-DD" }
+POST /api/nutrition/logs → { "food_id": "uuid", "logged_at": "YYYY-MM-DD", "meal_type": "lunch", "quantity_g": 150 }
+POST /api/nutrition/foods → { "name": "string", "calories_per100g": 350, "protein_per100g": 25, "carbs_per100g": 40, "fat_per100g": 10 }
+```
+
+---
+
 #### AI COACH
 
 | Method | Endpoint | Query Params | Mô tả |
@@ -707,6 +800,13 @@ gymtrack/
 | GET | `/api/ai/conversations/:id/messages` | — | Lịch sử messages của conversation |
 | POST | `/api/ai/conversations/:id/messages` | — | Gửi message, nhận AI response (stream) |
 | GET | `/api/ai/insights` | `period` | AI phân tích (`period`: week/month) |
+
+**Key Request Bodies — AI COACH:**
+
+```json
+POST /api/ai/conversations → { "context_type": "general", "title": "string?" }
+POST /api/ai/conversations/:id/messages → { "content": "string" }
+```
 
 ---
 
@@ -1067,7 +1167,11 @@ Table: ai_messages
 ⬜ 7.1  Responsive: kiểm tra toàn bộ screens trên 375px mobile
 ⬜ 7.2  Error states: network error, 404, session expired, API fallback
 ⬜ 7.3  Empty states: kiểm tra toàn bộ 22 màn hình
-⬜ 7.4  Viết test: auth APIs, workout session APIs (BE)
+⬜ 7.4  Viết integration tests cho các APIs quan trọng (BE)
+        - Auth: register, login, refresh token, forgot/reset password
+        - Workout: create session, log set, auto-update personal_records
+        - Nutrition: log food, macro calculation
+        - AI: mock Claude API response, verify context building logic
 ⬜ 7.5  Setup CI/CD: GitHub Actions (lint + test on PR)
 ⬜ 7.6  Deploy BE lên Railway + setup PostgreSQL managed
 ⬜ 7.7  Deploy FE lên Vercel + config environment variables

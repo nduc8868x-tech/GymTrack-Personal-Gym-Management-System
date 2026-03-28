@@ -713,8 +713,12 @@ gymtrack/
 ### 2.5 Database Schema
 
 ```
+-- ════════════════════════════════════════
+-- AUTH & USER
+-- ════════════════════════════════════════
+
 Table: users
-  id              UUID PK
+  id              UUID PK DEFAULT gen_random_uuid()
   email           VARCHAR UNIQUE NOT NULL
   password_hash   VARCHAR
   name            VARCHAR NOT NULL
@@ -724,6 +728,13 @@ Table: users
   height_cm       FLOAT
   created_at      TIMESTAMP DEFAULT NOW()
   updated_at      TIMESTAMP
+
+Table: refresh_tokens                        -- lưu refresh token để invalidate khi logout
+  id              UUID PK
+  user_id         UUID FK -> users (CASCADE DELETE)
+  token_hash      VARCHAR NOT NULL           -- lưu hash SHA-256, không lưu raw token
+  expires_at      TIMESTAMP NOT NULL
+  created_at      TIMESTAMP DEFAULT NOW()
 
 Table: user_goals
   id              UUID PK
@@ -743,6 +754,10 @@ Table: user_settings
   timezone              VARCHAR DEFAULT 'Asia/Ho_Chi_Minh'
   updated_at            TIMESTAMP
 
+-- ════════════════════════════════════════
+-- EXERCISE LIBRARY
+-- ════════════════════════════════════════
+
 Table: exercises
   id              UUID PK
   name            VARCHAR NOT NULL
@@ -753,13 +768,17 @@ Table: exercises
   is_custom       BOOLEAN DEFAULT false
   created_by      UUID FK -> users (null = system library)
   created_at      TIMESTAMP
-  deleted_at      TIMESTAMP  -- soft delete
+  deleted_at      TIMESTAMP                  -- soft delete
 
-Table: exercise_muscles  -- junction: 1 exercise, nhiều nhóm cơ
+Table: exercise_muscles                      -- junction: 1 exercise có nhiều nhóm cơ
   exercise_id     UUID FK -> exercises
   muscle_group    ENUM('chest','back','legs','shoulders','arms','core')
-  is_primary      BOOLEAN  -- true = cơ chính, false = cơ phụ
+  is_primary      BOOLEAN                    -- true = cơ chính, false = cơ phụ
   PRIMARY KEY (exercise_id, muscle_group)
+
+-- ════════════════════════════════════════
+-- WORKOUT PLANS
+-- ════════════════════════════════════════
 
 Table: workout_plans
   id              UUID PK
@@ -771,14 +790,16 @@ Table: workout_plans
   is_active       BOOLEAN DEFAULT false
   created_at      TIMESTAMP
   updated_at      TIMESTAMP
-  deleted_at      TIMESTAMP  -- soft delete
+  deleted_at      TIMESTAMP                  -- soft delete
 
 Table: plan_days
   id              UUID PK
   plan_id         UUID FK -> workout_plans (CASCADE DELETE)
-  day_of_week     INT  -- 0=Sunday ... 6=Saturday
-  name            VARCHAR  -- e.g. "Push Day"
+  day_of_week     INT NOT NULL               -- 0=Sunday ... 6=Saturday
+  name            VARCHAR                    -- e.g. "Push Day"
   order_index     INT
+  updated_at      TIMESTAMP
+  UNIQUE (plan_id, day_of_week, name)        -- tránh trùng lặp cùng ngày + tên
 
 Table: plan_exercises
   id              UUID PK
@@ -791,6 +812,10 @@ Table: plan_exercises
   order_index     INT
   notes           TEXT
 
+-- ════════════════════════════════════════
+-- SCHEDULE & SESSIONS
+-- ════════════════════════════════════════
+
 Table: scheduled_workouts
   id              UUID PK
   user_id         UUID FK -> users
@@ -801,6 +826,8 @@ Table: scheduled_workouts
   is_completed    BOOLEAN DEFAULT false
   reminder_sent   BOOLEAN DEFAULT false
   created_at      TIMESTAMP
+  updated_at      TIMESTAMP                  -- user có thể đổi giờ/ngày
+  INDEX (scheduled_date)                     -- cron job query theo ngày
 
 Table: workout_sessions
   id              UUID PK
@@ -812,6 +839,8 @@ Table: workout_sessions
   ended_at        TIMESTAMP
   notes           TEXT
   created_at      TIMESTAMP
+  updated_at      TIMESTAMP                  -- user có thể sửa notes sau
+  INDEX (user_id)
 
 Table: session_sets
   id                  UUID PK
@@ -820,20 +849,29 @@ Table: session_sets
   set_number          INT NOT NULL
   reps                INT
   weight_kg           FLOAT
-  duration_seconds    INT  -- cho cardio/plank
+  duration_seconds    INT                    -- cho cardio/plank
   is_personal_record  BOOLEAN DEFAULT false
   created_at          TIMESTAMP
+  updated_at          TIMESTAMP              -- user có thể sửa set nhầm
+  INDEX (session_id)
+
+-- ════════════════════════════════════════
+-- PROGRESS TRACKING
+-- ════════════════════════════════════════
 
 Table: personal_records
-  id              UUID PK
-  user_id         UUID FK -> users
-  exercise_id     UUID FK -> exercises
-  weight_kg       FLOAT
-  reps            INT
-  one_rm_estimate FLOAT  -- Epley formula: weight * (1 + reps/30)
-  achieved_at     DATE NOT NULL
-  session_id      UUID FK -> workout_sessions
-  UNIQUE (user_id, exercise_id)  -- chỉ giữ PR cao nhất
+  id               UUID PK
+  user_id          UUID FK -> users
+  exercise_id      UUID FK -> exercises
+  weight_kg        FLOAT
+  reps             INT
+  one_rm_estimate  FLOAT                     -- Epley: weight * (1 + reps/30)
+  is_current_best  BOOLEAN DEFAULT false     -- true = PR hiện tại; false = lịch sử cũ
+  achieved_at      DATE NOT NULL
+  session_id       UUID FK -> workout_sessions
+  -- Không có UNIQUE constraint → giữ toàn bộ lịch sử PR
+  -- Khi có PR mới: UPDATE is_current_best=false (cũ), INSERT mới với is_current_best=true
+  INDEX (user_id, exercise_id)
 
 Table: body_measurements
   id              UUID PK
@@ -851,6 +889,12 @@ Table: body_measurements
   photo_url       VARCHAR
   notes           TEXT
   created_at      TIMESTAMP
+  updated_at      TIMESTAMP                  -- user có thể edit measurement cũ
+  INDEX (user_id, measured_at)
+
+-- ════════════════════════════════════════
+-- NUTRITION
+-- ════════════════════════════════════════
 
 Table: nutrition_plans
   id              UUID PK
@@ -871,13 +915,13 @@ Table: foods
   name                VARCHAR NOT NULL
   brand               VARCHAR
   calories_per100g    FLOAT NOT NULL
-  protein_per100g     FLOAT
-  carbs_per100g       FLOAT
-  fat_per100g         FLOAT
-  fiber_per100g       FLOAT
-  serving_size_g      FLOAT  -- default serving size
-  serving_unit        VARCHAR  -- e.g. "quả", "muỗng canh"
-  open_food_facts_id  VARCHAR  -- external ID
+  protein_per100g     FLOAT NOT NULL DEFAULT 0   -- DEFAULT 0 thay vì nullable
+  carbs_per100g       FLOAT NOT NULL DEFAULT 0   -- cần cho macro tracking
+  fat_per100g         FLOAT NOT NULL DEFAULT 0
+  fiber_per100g       FLOAT NOT NULL DEFAULT 0
+  serving_size_g      FLOAT                      -- default serving size
+  serving_unit        VARCHAR                    -- e.g. "quả", "muỗng canh"
+  open_food_facts_id  VARCHAR                    -- external ID để sync
   is_custom           BOOLEAN DEFAULT false
   created_by          UUID FK -> users (null = global DB)
   created_at          TIMESTAMP
@@ -890,14 +934,22 @@ Table: food_logs
   meal_type       ENUM('breakfast','lunch','dinner','snack')
   quantity_g      FLOAT NOT NULL
   created_at      TIMESTAMP
+  updated_at      TIMESTAMP                      -- user có thể sửa quantity
+  INDEX (user_id, logged_at)                     -- composite index: query theo ngày
+
+-- ════════════════════════════════════════
+-- AI COACH
+-- ════════════════════════════════════════
 
 Table: ai_conversations
-  id              UUID PK
-  user_id         UUID FK -> users
-  context_type    ENUM('general','workout_analysis','nutrition_advice','progress_review')
-  title           VARCHAR
-  created_at      TIMESTAMP
-  updated_at      TIMESTAMP
+  id                UUID PK
+  user_id           UUID FK -> users
+  context_type      ENUM('general','workout_analysis','nutrition_advice','progress_review')
+  context_ref_id    UUID                          -- FK tuỳ context_type (session_id, plan_id...)
+  context_snapshot  JSONB                         -- snapshot data tại thời điểm tạo conversation
+  title             VARCHAR
+  created_at        TIMESTAMP
+  updated_at        TIMESTAMP
 
 Table: ai_messages
   id                  UUID PK

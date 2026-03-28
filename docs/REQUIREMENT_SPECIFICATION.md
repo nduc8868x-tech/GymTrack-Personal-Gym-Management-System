@@ -422,42 +422,61 @@ Profile & Settings
 ### 2.2 System Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                   CLIENT (Browser)                   │
-│   Next.js App (SSR + CSR)                            │
-│   ┌──────────┐ ┌──────────┐ ┌───────────────────┐  │
-│   │  Pages/  │ │  Zustand │ │  React Query      │  │
-│   │  Layouts │ │  (State) │ │  (API Cache)      │  │
-│   └──────────┘ └──────────┘ └───────────────────┘  │
-└────────────────────┬────────────────────────────────┘
-                     │ HTTPS / REST API (JWT)
-┌────────────────────▼────────────────────────────────┐
-│              BACKEND (Node.js + Express + TS)        │
-│  ┌──────────┐ ┌─────────────┐ ┌──────────────────┐  │
-│  │  Auth    │ │ Controllers │ │  AI Service      │  │
-│  │  (JWT)   │ │  + Routes   │ │  (Claude API)    │  │
-│  └──────────┘ └──────┬──────┘ └──────────────────┘  │
-│                      │                               │
-│  ┌───────────────────▼────────────────────────────┐  │
-│  │              Prisma ORM                        │  │
-│  └───────────────────┬────────────────────────────┘  │
-└─────────────────────-│──────────────────────────────┘
-                       │
-┌──────────────────────▼─────────────────────────────┐
-│               PostgreSQL Database                   │
-└─────────────────────────────────────────────────────┘
-          │                          │
-┌─────────▼──────┐        ┌──────────▼──────┐
-│  Cloudinary    │        │  Open Food Facts │
-│  (Images)      │        │  API (Nutrition) │
-└────────────────┘        └─────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                      CLIENT (Browser)                        │
+│   Next.js 15 App (SSR + CSR)                                 │
+│  ┌──────────┐  ┌──────────┐  ┌──────────────┐  ┌────────┐  │
+│  │  Pages / │  │  Zustand │  │ React Query  │  │ Forms  │  │
+│  │  Layouts │  │  (State) │  │ (API Cache)  │  │RHF+Zod │  │
+│  └──────────┘  └──────────┘  └──────────────┘  └────────┘  │
+└──────────────────────┬──────────────────────────────────────┘
+                       │ HTTPS / REST API
+                       │ Authorization: Bearer <access_token>
+                       │ Cookie: refresh_token (httpOnly)
+┌──────────────────────▼──────────────────────────────────────┐
+│                BACKEND (Node.js + Express + TS)              │
+│  ┌────────────────┐  ┌─────────────┐  ┌──────────────────┐  │
+│  │   Auth         │  │ Controllers │  │   AI Service     │  │
+│  │ JWT + Resend   │  │  + Routes   │  │  (Claude API)    │  │
+│  │ (email service)│  │             │  │                  │  │
+│  └────────────────┘  └──────┬──────┘  └──────────────────┘  │
+│                             │                                │
+│  ┌──────────────────────────▼─────────────────────────────┐  │
+│  │                    Prisma ORM                          │  │
+│  └──────────────────────────┬─────────────────────────────┘  │
+│                             │                                │
+│  ┌──────────────────────────┐                               │
+│  │  node-cron (Cron Jobs)   │ ← chạy trong BE process      │
+│  │  - Check scheduled_workouts mỗi phút                    │
+│  │  - Gửi web push / email reminder                        │
+│  └──────────────────────────┘                               │
+└─────────────────────────────┬───────────────────────────────┘
+                              │
+┌─────────────────────────────▼──────────────────────────────┐
+│                    PostgreSQL Database                      │
+└────────────────────────────────────────────────────────────┘
+
+Backend gọi external services (không phải DB):
+┌───────────────┐  ┌──────────────────┐  ┌──────────────┐
+│  Cloudinary   │  │ Open Food Facts  │  │   Resend     │
+│ (upload &     │  │ (tìm kiếm thực   │  │ (gửi email:  │
+│  store ảnh)   │  │  phẩm, nutrition)│  │  reset/remind│
+└───────────────┘  └──────────────────┘  └──────────────┘
 ```
 
 **Request flow:**
-1. FE gọi BE qua REST API, đính kèm JWT token
-2. BE verify token → Controller xử lý → Prisma query DB
-3. AI requests: BE gọi Claude API kèm context user, trả kết quả về FE
-4. Cron job (node-cron) check lịch → gửi web push notification
+
+1. **API call thông thường:** FE gửi request kèm `Authorization: Bearer <access_token>` → BE verify JWT → Controller xử lý → Prisma query DB → trả response
+
+2. **Access token hết hạn (15p):** FE tự động gọi `POST /api/auth/refresh` kèm `refresh_token` cookie (httpOnly) → BE validate → trả `access_token` mới → FE retry request gốc
+
+3. **AI request:** FE gọi `POST /api/ai/chat` → BE tổng hợp context (workout history, measurements, nutrition của user) → gọi Claude API → stream response về FE
+
+4. **Cron job reminder:** node-cron chạy mỗi phút trong BE process → query `scheduled_workouts` sắp đến giờ → gửi Web Push (Android/Desktop) hoặc email qua Resend (iOS fallback)
+
+5. **Upload ảnh:** FE gửi file lên BE → BE upload lên Cloudinary → lưu `photo_url` vào DB
+
+6. **Tìm thực phẩm:** FE gọi BE → BE gọi Open Food Facts API → transform & trả về FE (BE làm proxy để ẩn rate limit và cache kết quả)
 
 ---
 

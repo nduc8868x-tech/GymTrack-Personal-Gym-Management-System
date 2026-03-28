@@ -599,33 +599,114 @@ gymtrack/
 
 ### 2.4 REST API Endpoints
 
-| Method | Endpoint | Mô tả |
-|--------|----------|-------|
-| POST | `/api/auth/register` | Đăng ký |
-| POST | `/api/auth/login` | Đăng nhập |
-| GET | `/api/auth/me` | Lấy profile |
-| PUT | `/api/auth/profile` | Cập nhật profile |
-| GET | `/api/exercises` | Danh sách bài tập (+ filter) |
-| POST | `/api/exercises` | Tạo bài tập custom |
-| GET | `/api/plans` | Danh sách workout plans |
-| POST | `/api/plans` | Tạo plan mới |
-| PUT | `/api/plans/:id` | Cập nhật plan |
-| POST | `/api/plans/:id/activate` | Kích hoạt plan |
-| GET | `/api/workouts/sessions` | Lịch sử buổi tập |
-| POST | `/api/workouts/sessions` | Bắt đầu buổi tập |
-| PUT | `/api/workouts/sessions/:id` | Kết thúc / cập nhật buổi |
-| POST | `/api/workouts/sessions/:id/sets` | Log 1 set |
-| GET | `/api/schedule` | Lịch tập theo date range |
-| POST | `/api/schedule` | Tạo lịch tập |
-| GET | `/api/progress/measurements` | Lịch sử số đo |
-| POST | `/api/progress/measurements` | Log số đo mới |
-| GET | `/api/progress/charts` | Data cho biểu đồ |
-| GET | `/api/nutrition/logs` | Food log theo ngày |
-| POST | `/api/nutrition/logs` | Log bữa ăn |
-| GET | `/api/nutrition/foods/search` | Tìm thực phẩm |
-| GET | `/api/nutrition/plan` | Nutrition plan hiện tại |
-| POST | `/api/ai/chat` | Gửi message đến AI coach |
-| GET | `/api/ai/insights` | AI phân tích tuần/tháng |
+#### Response Format chuẩn (tất cả endpoints)
+
+```json
+// Success — single object
+{ "success": true, "data": { ... } }
+
+// Success — list với pagination
+{ "success": true, "data": [...], "meta": { "total": 100, "limit": 20, "offset": 0 } }
+
+// Error
+{ "success": false, "error": { "code": "VALIDATION_ERROR", "message": "..." } }
+```
+
+**Error codes:** `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `VALIDATION_ERROR`, `INTERNAL_ERROR`
+
+---
+
+#### AUTH
+
+| Method | Endpoint | Query Params | Mô tả |
+|--------|----------|-------------|-------|
+| POST | `/api/auth/register` | — | Đăng ký tài khoản mới |
+| POST | `/api/auth/login` | — | Đăng nhập, trả access + refresh token |
+| POST | `/api/auth/logout` | — | Invalidate refresh token trong DB |
+| POST | `/api/auth/refresh` | — | Lấy access token mới từ refresh token (cookie) |
+| POST | `/api/auth/forgot-password` | — | Gửi email chứa link reset password |
+| POST | `/api/auth/reset-password` | — | Đặt mật khẩu mới (kèm token từ email) |
+| GET | `/api/auth/me` | — | Lấy thông tin user đang đăng nhập |
+| PUT | `/api/auth/profile` | — | Cập nhật profile (tên, chiều cao, giới tính...) |
+| PUT | `/api/auth/settings` | — | Cập nhật settings (đơn vị, timezone, notification) |
+
+#### EXERCISES
+
+| Method | Endpoint | Query Params | Mô tả |
+|--------|----------|-------------|-------|
+| GET | `/api/exercises` | `search`, `muscle`, `equipment`, `limit`, `offset` | Danh sách bài tập (filter + paginate) |
+| POST | `/api/exercises` | — | Tạo bài tập custom |
+| GET | `/api/exercises/:id` | — | Chi tiết 1 bài tập + PR history |
+| DELETE | `/api/exercises/:id` | — | Xóa bài tập custom (soft delete) |
+
+#### WORKOUT PLANS
+
+| Method | Endpoint | Query Params | Mô tả |
+|--------|----------|-------------|-------|
+| GET | `/api/plans` | — | Danh sách workout plans của user |
+| POST | `/api/plans` | — | Tạo plan mới |
+| GET | `/api/plans/:id` | — | Chi tiết plan + danh sách plan_days & exercises |
+| PUT | `/api/plans/:id` | — | Cập nhật plan (tên, mô tả, split type) |
+| DELETE | `/api/plans/:id` | — | Xóa plan (soft delete, giữ lịch sử sessions) |
+| POST | `/api/plans/:id/activate` | — | Kích hoạt plan (deactivate plan cũ) |
+| POST | `/api/plans/:id/days` | — | Thêm plan day |
+| PUT | `/api/plans/:id/days/:dayId` | — | Cập nhật plan day |
+| DELETE | `/api/plans/:id/days/:dayId` | — | Xóa plan day |
+| POST | `/api/plans/:id/days/:dayId/exercises` | — | Thêm bài tập vào plan day |
+| PUT | `/api/plans/:id/days/:dayId/exercises/:exId` | — | Cập nhật sets/reps/rest |
+| DELETE | `/api/plans/:id/days/:dayId/exercises/:exId` | — | Xóa bài tập khỏi plan day |
+
+#### WORKOUT SESSIONS
+
+| Method | Endpoint | Query Params | Mô tả |
+|--------|----------|-------------|-------|
+| GET | `/api/workouts/sessions` | `from`, `to`, `limit`, `offset` | Lịch sử buổi tập (có date range) |
+| POST | `/api/workouts/sessions` | — | Bắt đầu buổi tập mới |
+| GET | `/api/workouts/sessions/:id` | — | Chi tiết 1 buổi tập + tất cả sets |
+| PUT | `/api/workouts/sessions/:id` | — | Kết thúc buổi / cập nhật notes |
+| POST | `/api/workouts/sessions/:id/sets` | — | Log 1 set (exercise, reps, kg) |
+| DELETE | `/api/workouts/sessions/:id/sets/:setId` | — | Xóa set log nhầm |
+
+#### SCHEDULE
+
+| Method | Endpoint | Query Params | Mô tả |
+|--------|----------|-------------|-------|
+| GET | `/api/schedule` | `from`, `to` | Lịch tập theo date range |
+| POST | `/api/schedule` | — | Tạo lịch tập mới |
+| PUT | `/api/schedule/:id` | — | Cập nhật lịch (đổi giờ, ngày) |
+| DELETE | `/api/schedule/:id` | — | Hủy / xóa lịch tập |
+
+#### PROGRESS
+
+| Method | Endpoint | Query Params | Mô tả |
+|--------|----------|-------------|-------|
+| GET | `/api/progress/measurements` | `from`, `to`, `limit`, `offset` | Lịch sử số đo cơ thể |
+| POST | `/api/progress/measurements` | — | Log số đo mới (cân nặng, số đo, ảnh) |
+| GET | `/api/progress/charts` | `type`, `from`, `to` | Data cho biểu đồ (`type`: weight/volume/strength) |
+| GET | `/api/progress/records` | — | Tất cả Personal Records theo từng bài tập |
+
+#### NUTRITION
+
+| Method | Endpoint | Query Params | Mô tả |
+|--------|----------|-------------|-------|
+| GET | `/api/nutrition/plan` | — | Nutrition plan đang active |
+| POST | `/api/nutrition/plan` | — | Tạo nutrition plan mới |
+| PUT | `/api/nutrition/plan/:id` | — | Cập nhật mục tiêu calo/macro |
+| GET | `/api/nutrition/logs` | `date` | Food log theo ngày (mặc định hôm nay) |
+| POST | `/api/nutrition/logs` | — | Log bữa ăn mới |
+| DELETE | `/api/nutrition/logs/:id` | — | Xóa food log nhầm |
+| GET | `/api/nutrition/foods/search` | `q`, `limit` | Tìm thực phẩm (Open Food Facts + custom) |
+| POST | `/api/nutrition/foods` | — | Thêm thực phẩm custom |
+
+#### AI COACH
+
+| Method | Endpoint | Query Params | Mô tả |
+|--------|----------|-------------|-------|
+| GET | `/api/ai/conversations` | — | Danh sách conversations |
+| POST | `/api/ai/conversations` | — | Tạo conversation mới |
+| GET | `/api/ai/conversations/:id/messages` | — | Lịch sử messages của conversation |
+| POST | `/api/ai/conversations/:id/messages` | — | Gửi message, nhận AI response (stream) |
+| GET | `/api/ai/insights` | `period` | AI phân tích (`period`: week/month) |
 
 ---
 

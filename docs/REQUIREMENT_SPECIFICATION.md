@@ -228,11 +228,13 @@ Người tập gym thường không có công cụ thống nhất để theo dõ
 | NFR | Tiêu chí đo lường |
 |-----|-------------------|
 | **Performance** | First Contentful Paint (FCP) < 2s trên kết nối 4G; API response < 500ms (đo bằng Lighthouse & Postman) |
-| **Responsive** | Hoạt động đúng từ 375px (iPhone SE) đến 1440px desktop; test trên Chrome/Safari/Firefox |
-| **Security** | JWT expiry 7 ngày; rate limit 100 req/phút/IP; input validation toàn bộ bằng Zod; HTTPS bắt buộc trên production |
+| **Responsive** | Hoạt động đúng từ 375px (iPhone SE) đến 1440px desktop; test trên Chrome 100+, Safari 15+, Firefox 100+ |
+| **Security** | Password tối thiểu 8 ký tự, bắt buộc có chữ + số; JWT access token expiry 15 phút, refresh token 7 ngày (silent refresh); rate limit 100 req/phút/IP; input validation toàn bộ bằng Zod; HTTPS bắt buộc trên production; CORS chỉ cho phép domain FE |
 | **Data Integrity** | Soft delete cho workout plans & exercises; không mất lịch sử khi user xóa plan |
 | **Backup** | Database backup tự động hàng ngày do Railway (hoặc platform deploy) quản lý |
 | **Availability** | Uptime ≥ 99% (tận dụng SLA của Vercel + Railway free tier) |
+| **Browser Support** | Web Push Notification **không hỗ trợ trên iOS Safari < 16.4** — fallback: gửi reminder qua email thay thế |
+| **API Fallback** | Open Food Facts API down → hiện thông báo, cho phép nhập thủ công; Claude API timeout (>15s) → hiện thông báo lỗi, không crash app |
 
 ---
 
@@ -254,74 +256,140 @@ Người dùng tự đăng ký, tự quản lý toàn bộ dữ liệu tập luy
 ```
 
 **Edge cases cần xử lý:**
-- User chưa tạo plan → Dashboard vẫn dùng được, hiển thị empty state có hướng dẫn
-- User bỏ tập 2 tuần → Progress chart không bị broken, AI nhận xét dựa trên data thực
-- User đang log session mà tắt tab → Khi mở lại, session vẫn còn (hoặc hỏi có muốn tiếp tục không)
-- Mạng yếu khi đang tập → Cho phép log offline, sync khi có mạng (could-have)
+
+| Tình huống | Xử lý |
+|------------|-------|
+| Chưa tạo plan | Dashboard vẫn dùng được, hiển thị empty state có hướng dẫn |
+| Bỏ tập 2 tuần | Progress chart không broken, AI nhận xét dựa trên data thực tế có |
+| Tắt tab giữa chừng khi đang log session | Khi mở lại hỏi "Bạn có muốn tiếp tục buổi tập chưa hoàn thành không?" |
+| Mạng yếu khi đang tập | Hiện thông báo mất kết nối, data đã nhập giữ nguyên; retry tự động khi có mạng |
+| Claude API timeout | Hiện "AI Coach tạm thời không khả dụng, thử lại sau" — không crash app |
+| Open Food Facts API down | Hiện thông báo, cho phép nhập thông tin dinh dưỡng thủ công |
+| Upload ảnh progress thất bại | Hiện toast error, ảnh không bị mất — user có thể thử lại |
+| JWT hết hạn (15 phút) | Silent refresh bằng refresh token; nếu refresh token cũng hết → redirect về Login |
+| Dùng iOS Safari < 16.4 | Web Push không hoạt động → gửi reminder qua email thay thế, hiện banner thông báo |
 
 ---
 
 ### 1.5 Screen List & Features
 
-| # | Màn hình | Chức năng chính | Priority | Empty State |
-|---|----------|-----------------|----------|-------------|
-| 1 | **Landing** | Giới thiệu app, CTA đăng ký/đăng nhập | MVP | — |
-| 2 | **Login / Register** | Form đăng nhập, đăng ký, OAuth Google | MVP | — |
-| 3 | **Forgot Password** | Nhập email nhận link reset | MVP | — |
-| 4 | **Onboarding** | Setup profile: thông tin cá nhân, mục tiêu, số buổi/tuần | MVP | — |
-| 5 | **Dashboard (Home)** | Tổng quan hôm nay: lịch tập, calo, PR gần nhất, AI tip | MVP | Hướng dẫn tạo plan & lịch tập |
-| 6 | **Calendar / Schedule** | Lịch tập dạng tuần/tháng, tạo/xóa buổi tập | MVP | "Chưa có lịch tập — Tạo ngay" |
-| 7 | **Workout Session** | Log buổi tập live: chọn bài, nhập set/rep/kg, rest timer | MVP | — |
-| 8 | **Workout History** | Danh sách buổi đã tập, xem chi tiết từng buổi | MVP | "Chưa có buổi tập nào — Bắt đầu tập" |
-| 9 | **Workout Plans** | Danh sách plans, tạo plan mới, kích hoạt plan | MVP | "Chưa có plan — Tạo chương trình tập" |
-| 10 | **Plan Detail / Editor** | Chỉnh sửa plan: thêm ngày, bài tập, target set/rep | MVP | "Chưa có ngày tập — Thêm ngày" |
-| 11 | **Exercise Library** | Tìm kiếm bài tập, lọc nhóm cơ, xem hướng dẫn | MVP | Không tìm thấy → "Thêm bài tập custom" |
-| 12 | **Exercise Detail** | Chi tiết bài tập + lịch sử sử dụng + PR | MVP | Chưa từng tập → "Chưa có lịch sử" |
-| 13 | **Progress Dashboard** | Biểu đồ cân nặng, số đo, volume, strength chart | MVP | "Chưa có data — Log cân nặng đầu tiên" |
-| 14 | **Body Measurements** | Log cân nặng, số đo, upload ảnh progress | MVP | Timeline trống → hướng dẫn log |
-| 15 | **Nutrition Dashboard** | Daily macro dashboard, calo hôm nay vs mục tiêu | Should | "Chưa log bữa nào hôm nay" |
-| 16 | **Food Log** | Log bữa ăn: sáng/trưa/tối/snack, tìm thực phẩm | Should | Bữa trống → "Thêm thực phẩm" |
-| 17 | **Nutrition Plan** | Tạo/chỉnh mục tiêu calo & macro theo giai đoạn | Should | "Chưa có nutrition plan — Tạo ngay" |
-| 18 | **Food Database** | Tìm kiếm thực phẩm (Open Food Facts + custom) | Should | Không tìm thấy → "Thêm thực phẩm custom" |
-| 19 | **AI Coach Chat** | Chat với AI, xem phân tích tuần/tháng, nhận gợi ý | Should | Chào mừng + gợi ý câu hỏi đầu tiên |
-| 20 | **Profile & Settings** | Thông tin cá nhân, mục tiêu, đơn vị, notifications | MVP | — |
+| # | Màn hình | Loại | Chức năng chính | Priority | Empty State |
+|---|----------|------|-----------------|----------|-------------|
+| 1 | **Landing** | Screen | Giới thiệu app, CTA đăng ký/đăng nhập | MVP | — |
+| 2 | **Login** | Screen | Form đăng nhập, OAuth Google | MVP | — |
+| 3 | **Register** | Screen | Form đăng ký tài khoản, OAuth Google | MVP | — |
+| 4 | **Forgot Password** | Screen | Nhập email nhận link reset | MVP | — |
+| 5 | **Onboarding** | Screen (multi-step) | Setup profile: thông tin cá nhân, mục tiêu, số buổi/tuần | MVP | — |
+| 6 | **Dashboard (Home)** | Screen | Tổng quan hôm nay: lịch tập, calo, PR gần nhất, AI tip | MVP | Hướng dẫn tạo plan & lịch tập |
+| 7 | **Calendar / Schedule** | Screen | Lịch tập dạng tuần/tháng, tạo/xóa buổi tập | MVP | "Chưa có lịch tập — Tạo ngay" |
+| 8 | **Workout Session** | Screen (fullscreen) | Log buổi tập live: chọn bài, nhập set/rep/kg, rest timer | MVP | — |
+| 9 | **Workout History** | Screen | Danh sách buổi đã tập | MVP | "Chưa có buổi tập nào — Bắt đầu tập" |
+| 10 | **Workout Session Detail** | Screen | Chi tiết 1 buổi tập đã log (readonly) | MVP | — |
+| 11 | **Workout Plans** | Screen | Danh sách plans, kích hoạt plan | MVP | "Chưa có plan — Tạo chương trình tập" |
+| 12 | **Plan Detail / Editor** | Screen | Chỉnh sửa plan: thêm ngày, bài tập, target set/rep | MVP | "Chưa có ngày tập — Thêm ngày" |
+| 13 | **Exercise Library** | Screen | Tìm kiếm bài tập, lọc nhóm cơ, xem hướng dẫn | MVP | Không tìm thấy → "Thêm bài tập custom" |
+| 14 | **Exercise Detail** | Screen | Chi tiết bài tập + lịch sử sử dụng + PR | MVP | Chưa từng tập → "Chưa có lịch sử" |
+| 15 | **Progress Dashboard** | Screen | Biểu đồ cân nặng, số đo, volume, strength chart | MVP | "Chưa có data — Log cân nặng đầu tiên" |
+| 16 | **Body Measurements** | Screen | Log cân nặng, số đo, upload ảnh progress | MVP | Timeline trống → hướng dẫn log |
+| 17 | **Nutrition Dashboard** | Screen | Daily macro dashboard, calo hôm nay vs mục tiêu | Should | "Chưa log bữa nào hôm nay" |
+| 18 | **Food Log** | Screen | Log bữa ăn: sáng/trưa/tối/snack | Should | Bữa trống → "Thêm thực phẩm" |
+| 19 | **Food Search** | Bottom Sheet | Tìm thực phẩm (Open Food Facts + custom) — mở từ Food Log | Should | Không tìm thấy → "Thêm thực phẩm custom" |
+| 20 | **Nutrition Plan** | Screen | Tạo/chỉnh mục tiêu calo & macro theo giai đoạn | Should | "Chưa có nutrition plan — Tạo ngay" |
+| 21 | **AI Coach Chat** | Screen | Chat với AI, xem phân tích tuần/tháng, nhận gợi ý | Should | Chào mừng + gợi ý câu hỏi đầu tiên |
+| 22 | **Profile & Settings** | Screen | Thông tin cá nhân, mục tiêu, đơn vị (kg/lbs), notifications | MVP | — |
+| — | **Error / Offline** | Screen | Mất mạng, 404, session expired → redirect về Login | MVP | — |
 
-**Tổng: 20 màn hình** (14 MVP + 6 Should-have)
+**Tổng: 22 màn hình + 1 Bottom Sheet + 1 Error Screen** (15 MVP + 7 Should-have)
+
+---
+
+**Navigation Layout:**
+- **Desktop (≥768px):** Sidebar cố định bên trái, 5 items chính
+- **Mobile (<768px):** Bottom Navigation Bar, tối đa 5 items
+```
+Bottom Nav (Mobile):  Dashboard | Schedule | + (Workout) | Nutrition | Progress
+Sidebar (Desktop):    Dashboard | Schedule | Workout | Nutrition | Progress | AI Coach | Profile
+```
+> AI Coach & Profile trên mobile truy cập qua menu icon hoặc Profile avatar.
 
 ---
 
 **Navigation Flow:**
 
 ```
+AUTH FLOW
+─────────
 Landing
-  ├── [Đăng nhập] → Login → Dashboard
-  ├── [Đăng ký]   → Register → Onboarding → Dashboard
-  └── [Quên MK]   → Forgot Password → (email) → Login
+  ├── [Đăng nhập]  → Login → Dashboard
+  ├── [Đăng ký]    → Register → Onboarding (multi-step) → Dashboard
+  └── [Quên MK]    → Forgot Password → (check email) → Login
+JWT hết hạn (không refresh được) → bất kỳ màn hình nào → Login
 
+DASHBOARD
+─────────
 Dashboard
-  ├── [Hôm nay có lịch] → Workout Session
-  ├── [Xem lịch]        → Calendar / Schedule
-  ├── [Xem Progress]    → Progress Dashboard
-  └── [AI tip]          → AI Coach Chat
+  ├── [Card lịch hôm nay]  → Workout Session (live)
+  ├── [Xem lịch]           → Calendar / Schedule
+  ├── [Card Progress]      → Progress Dashboard
+  ├── [AI tip / Coach]     → AI Coach Chat
+  └── [Avatar]             → Profile & Settings
 
-Calendar
-  ├── [Chọn buổi] → Workout Session (live logging)
-  └── [+ Tạo]     → Tạo lịch tập mới (modal/drawer)
+WORKOUT FLOW
+────────────
+Calendar / Schedule
+  ├── [Chọn buổi đã lên lịch]  → Workout Session (live)
+  └── [+ Tạo lịch]             → Modal: chọn ngày, giờ, plan day → lưu
 
-Workout Session
-  ├── [Thêm bài]  → Exercise Library → chọn → quay lại Session
-  └── [Kết thúc] → Workout History (detail buổi vừa tập)
+Workout Session (live)
+  ├── [+ Thêm bài tập]  → Exercise Library → [Chọn] → quay lại Session
+  ├── [Tap bài tập]     → expand set logger (inline, không thoát màn hình)
+  └── [Hoàn thành]      → Workout Session Detail (summary buổi vừa tập)
 
-Workout Plans → Plan Detail / Editor
-  └── [Thêm bài] → Exercise Library → chọn → quay lại Editor
+Workout History
+  └── [Tap buổi tập]   → Workout Session Detail (readonly)
 
+Workout Plans
+  ├── [Tap plan]       → Plan Detail / Editor
+  └── [+ Tạo plan]     → Plan Detail / Editor (mode: create)
+
+Plan Detail / Editor
+  └── [+ Thêm bài tập] → Exercise Library → [Chọn] → quay lại Editor
+
+Exercise Library
+  └── [Tap bài tập]   → Exercise Detail
+
+Exercise Detail
+  └── [Dùng trong plan] → Plan Detail / Editor
+
+PROGRESS FLOW
+─────────────
 Progress Dashboard
-  └── [+ Log]    → Body Measurements
+  ├── [+ Log cân nặng / số đo]  → Body Measurements
+  └── [Tap chart]               → Body Measurements (xem timeline)
 
+NUTRITION FLOW
+──────────────
 Nutrition Dashboard
-  └── [+ Thêm]  → Food Log → Food Database (nếu tìm thực phẩm)
+  ├── [+ Thêm bữa ăn]       → Food Log
+  └── [Xem / sửa mục tiêu]  → Nutrition Plan
 
-Sidebar / Bottom Nav: Dashboard | Schedule | Workout | Nutrition | Progress | AI | Profile
+Food Log
+  └── [Tìm thực phẩm]       → Food Search (Bottom Sheet)
+        └── [Chọn thực phẩm] → quay lại Food Log (auto-fill)
+
+AI COACH
+────────
+AI Coach Chat
+  ├── [+ Cuộc trò chuyện mới]  → tạo conversation mới (inline)
+  └── [Tap conversation cũ]    → xem lại lịch sử chat
+
+PROFILE
+───────
+Profile & Settings
+  ├── [Sửa thông tin]     → inline edit hoặc modal
+  ├── [Đổi mật khẩu]     → modal
+  ├── [Notifications]     → toggle inline
+  └── [Đăng xuất]        → Landing
 ```
 
 ---

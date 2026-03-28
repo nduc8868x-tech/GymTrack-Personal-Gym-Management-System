@@ -13,6 +13,9 @@
 
 **GymTrack** là ứng dụng web cá nhân giúp người dùng tự quản lý và tối ưu hóa quá trình tập gym, bao gồm lên lịch, theo dõi workout, dinh dưỡng, và nhận tư vấn từ AI.
 
+**Problem Statement:**
+Người tập gym thường không có công cụ thống nhất để theo dõi workout, dinh dưỡng và tiến độ trong cùng một nơi. Các app hiện tại hoặc quá phức tạp (dành cho gym management) hoặc thiếu tính cá nhân hóa. GymTrack giải quyết bài toán này bằng cách kết hợp workout tracking, nutrition logging và AI coaching trong một ứng dụng đơn giản, tập trung vào người dùng cá nhân.
+
 | Thuộc tính | Giá trị |
 |-----------|---------|
 | **Platform** | Web App (Production) |
@@ -23,60 +26,213 @@
 
 ### 1.2 Functional Requirements
 
-#### FR-01: Authentication & User Profile — `Must-have (MVP)`
-- Đăng ký, đăng nhập (email/password + OAuth Google)
-- Thiết lập hồ sơ cá nhân: tuổi, giới tính, chiều cao, cân nặng, mục tiêu tập
+> **Priority levels:**
+> - `Must-have` — Không có không ship được (MVP core)
+> - `Should-have` — Quan trọng nhưng có thể delay sang sprint sau
+> - `Could-have` — Nice-to-have, làm nếu còn thời gian
 
-#### FR-02: Workout Schedule (Lịch tập) — `Must-have (MVP)`
-- Tạo lịch tập theo ngày trong tuần
-- Nhắc nhở buổi tập qua notification (web push / email)
+---
+
+#### FR-01: Authentication & User Profile — `Must-have`
+**Actor:** Gym User
+
+**Description:** Người dùng có thể tạo tài khoản, đăng nhập và quản lý hồ sơ cá nhân.
+
+**Features:**
+- Đăng ký bằng email/password hoặc OAuth Google
+- Đăng nhập, đăng xuất
+- Quên mật khẩu / reset qua email
+- Thiết lập hồ sơ: tên, tuổi, giới tính, chiều cao, cân nặng hiện tại, mục tiêu
+
+**Acceptance Criteria:**
+- ✅ User đăng ký thành công → nhận email xác nhận → có thể đăng nhập
+- ✅ Đăng nhập sai password 5 lần → tài khoản bị khóa tạm 15 phút
+- ✅ Forgot password → nhận link reset qua email, link hết hạn sau 1 giờ
+- ✅ Profile được lưu và hiển thị đúng sau khi cập nhật
+
+---
+
+#### FR-02: Onboarding — `Must-have`
+**Actor:** Gym User (mới đăng ký)
+
+**Description:** Sau khi đăng ký lần đầu, user được dẫn qua flow setup để app cá nhân hóa trải nghiệm.
+
+**Features:**
+- Nhập thông tin cơ thể: chiều cao, cân nặng hiện tại
+- Chọn mục tiêu: tăng cơ / giảm mỡ / tăng sức mạnh / sức khỏe tổng thể
+- Chọn số buổi tập/tuần
+- AI tự động gợi ý nutrition targets (calo, macro) dựa theo thông tin trên
+
+**Acceptance Criteria:**
+- ✅ Onboarding chỉ hiện 1 lần sau lần đăng ký đầu tiên
+- ✅ Có thể skip và quay lại setup sau trong Profile & Settings
+- ✅ Sau khi hoàn thành → chuyển đến Dashboard với data đã được pre-fill
+
+---
+
+#### FR-03: Workout Schedule (Lịch tập) — `Must-have`
+**Actor:** Gym User
+
+**Description:** Người dùng có thể lên lịch tập và nhận nhắc nhở.
+
+**Features:**
+- Tạo lịch tập theo ngày (chọn ngày, giờ, tên buổi)
+- Gán plan day vào lịch tập
 - Xem lịch dạng Calendar view (tuần/tháng)
+- Nhắc nhở buổi tập qua web push notification
 
-#### FR-03: Workout Tracking (Log buổi tập) — `Must-have (MVP)`
-- Log buổi tập thực tế: chọn bài tập, nhập số set/rep/kg
-- Timer nghỉ giữa set
-- Ghi chú mỗi buổi tập
-- Xem lịch sử buổi tập
+**Acceptance Criteria:**
+- ✅ Tạo lịch tập cho bất kỳ ngày nào trong tương lai
+- ✅ Nếu có workout plan đang active → plan days được gợi ý tự động theo ngày trong tuần
+- ✅ Notification gửi đúng giờ đã đặt (±1 phút)
+- ✅ Buổi tập đã hoàn thành hiển thị khác với buổi chưa tập (màu/icon khác nhau)
+- ✅ Empty state: Nếu chưa có lịch → hiển thị nút "Tạo lịch tập đầu tiên"
 
-#### FR-04: Workout Plan (Chương trình tập) — `Must-have (MVP)`
-- Tạo chương trình tập theo tuần (A/B split, PPL, full-body...)
-- Mỗi ngày trong plan có danh sách bài tập + target set/rep
-- Kích hoạt plan để áp dụng vào lịch tập
+---
 
-#### FR-05: Exercise Library (Thư viện bài tập) — `Must-have (MVP)`
-- Thư viện 100+ bài tập mặc định (tên, nhóm cơ, hướng dẫn, hình ảnh)
-- Tìm kiếm/lọc theo nhóm cơ (chest, back, legs, shoulders, arms, core, cardio)
-- Thêm bài tập custom
+#### FR-04: Workout Tracking (Log buổi tập) — `Must-have`
+**Actor:** Gym User
 
-#### FR-06: Progress Tracking (Theo dõi tiến độ) — `Must-have (MVP)`
-- Log cân nặng, số đo cơ thể theo ngày
+**Description:** Người dùng có thể ghi lại chi tiết một buổi tập thực tế.
+
+**Features:**
+- Bắt đầu session mới (có hoặc không cần plan)
+- Chọn bài tập từ thư viện, nhập số set / rep / kg
+- Timer đếm ngược thời gian nghỉ giữa set
+- Ghi chú cho từng buổi
+- Xem lịch sử toàn bộ buổi tập
+
+**Acceptance Criteria:**
+- ✅ Có thể log ≥1 bài tập với ≥1 set trong 1 session
+- ✅ Thêm/xóa set trong lúc đang tập
+- ✅ Timer hoạt động khi màn hình không active (background)
+- ✅ Kết thúc session → data lưu vào Workout History ngay lập tức
+- ✅ Nếu weight × reps vượt PR hiện tại → tự động cập nhật Personal Record
+- ✅ Empty state: Lịch sử trống → hiển thị "Bắt đầu buổi tập đầu tiên"
+
+---
+
+#### FR-05: Workout Plan (Chương trình tập) — `Must-have`
+**Actor:** Gym User
+
+**Description:** Người dùng có thể tạo và quản lý chương trình tập theo tuần.
+
+**Features:**
+- Tạo plan với tên, mô tả, loại split (PPL / Upper-Lower / Full-body / Custom)
+- Thêm ngày tập trong tuần, mỗi ngày có danh sách bài tập + target set/rep
+- Kích hoạt 1 plan tại một thời điểm
+- Sao chép plan để tạo plan mới từ plan cũ
+
+**Acceptance Criteria:**
+- ✅ Tạo plan với ít nhất 1 ngày tập và 1 bài tập
+- ✅ Chỉ 1 plan được active tại 1 thời điểm; kích hoạt plan mới → plan cũ tự deactivate
+- ✅ Xóa plan → xóa soft (không mất lịch sử buổi tập đã log)
+- ✅ Empty state: Chưa có plan → hiển thị gợi ý tạo plan đầu tiên
+
+---
+
+#### FR-06: Exercise Library (Thư viện bài tập) — `Must-have`
+**Actor:** Gym User
+
+**Description:** Người dùng có thể tra cứu bài tập và thêm bài tập custom.
+
+**Features:**
+- Thư viện 100+ bài tập mặc định (tên, nhóm cơ chính/phụ, mô tả, video)
+- Tìm kiếm theo tên, lọc theo nhóm cơ và thiết bị
+- Thêm bài tập custom của riêng mình
+
+**Acceptance Criteria:**
+- ✅ Tìm kiếm realtime (debounce 300ms), không cần nhấn Enter
+- ✅ Bài tập custom hiển thị riêng biệt với thư viện hệ thống
+- ✅ Không thể xóa bài tập hệ thống; chỉ xóa được bài tập custom do mình tạo
+- ✅ Xóa bài tập custom đang được dùng trong plan/session → không cho xóa, hiện cảnh báo
+
+---
+
+#### FR-07: Progress Tracking (Theo dõi tiến độ) — `Must-have`
+**Actor:** Gym User
+
+**Description:** Người dùng có thể theo dõi sự thay đổi cơ thể và sức mạnh theo thời gian.
+
+**Features:**
+- Log cân nặng, % body fat, số đo cơ thể (ngực, eo, hông, tay, đùi)
 - Upload ảnh progress
-- Biểu đồ: cân nặng theo thời gian, volume tập, strength progress (1RM estimate)
-- Personal records (PR) tự động ghi nhận
+- Biểu đồ cân nặng, volume tập, strength progress (1RM estimate)
+- Personal Records tự động ghi nhận từ session_sets
 
-#### FR-07: Nutrition Management (Dinh dưỡng) — `Should-have`
-- Tạo nutrition plan theo mục tiêu (calo mục tiêu, macro split)
-- Log bữa ăn: chọn thực phẩm, nhập khẩu phần
-- Database thực phẩm (tích hợp Open Food Facts API hoặc custom DB)
-- Dashboard daily: calo đã ăn vs mục tiêu, macro breakdown (P/C/F)
+**Acceptance Criteria:**
+- ✅ Log measurement mỗi ngày, xem lịch sử theo timeline
+- ✅ Biểu đồ cân nặng hiển thị từ ngày đăng ký đến hôm nay
+- ✅ 1RM estimate tính theo công thức Epley: `weight × (1 + reps/30)`
+- ✅ PR mới lập → hiển thị badge "New PR!" trong session đang tập
+- ✅ Empty state: Chưa có data → hướng dẫn log measurement đầu tiên
 
-#### FR-08: AI Coach — `Should-have`
+---
+
+#### FR-08: Nutrition Management (Dinh dưỡng) — `Should-have`
+**Actor:** Gym User
+
+**Description:** Người dùng có thể theo dõi dinh dưỡng hàng ngày và quản lý kế hoạch ăn.
+
+**Features:**
+- Tạo nutrition plan: mục tiêu calo, macro split (P/C/F)
+- Log bữa ăn: sáng/trưa/tối/snack, tìm thực phẩm, nhập khẩu phần (gram)
+- Database thực phẩm tích hợp Open Food Facts API + thực phẩm custom
+- Dashboard daily: calo đã ăn vs mục tiêu, macro breakdown
+
+**Acceptance Criteria:**
+- ✅ Tìm thực phẩm realtime từ Open Food Facts API (có fallback nếu API lỗi)
+- ✅ Tính toán macro tự động dựa theo quantity_g nhập vào
+- ✅ Daily dashboard reset về 0 mỗi ngày mới
+- ✅ Có thể xóa food log nhầm trong ngày
+- ✅ Empty state: Chưa log bữa nào → hiển thị "Log bữa ăn đầu tiên"
+
+---
+
+#### FR-09: AI Coach — `Should-have`
+**Actor:** Gym User
+
+**Description:** Người dùng nhận được phân tích và tư vấn cá nhân hóa từ AI dựa trên dữ liệu thực tế.
+
+**Features:**
 - AI phân tích tiến độ tập luyện & dinh dưỡng theo tuần/tháng
-- Gợi ý điều chỉnh chương trình tập
-- Tư vấn dinh dưỡng dựa theo mục tiêu & progress
-- Chat với AI coach (context-aware về lịch sử của user)
+- Gợi ý điều chỉnh chương trình tập dựa trên progress
+- Tư vấn dinh dưỡng theo mục tiêu
+- Chat tự do với AI coach (context-aware về lịch sử user)
+
+**Acceptance Criteria:**
+- ✅ AI có thể truy cập workout history, measurements, nutrition logs của user để đưa ra nhận xét cụ thể
+- ✅ Phản hồi AI trong vòng 10 giây (hoặc hiện loading indicator)
+- ✅ Lịch sử chat được lưu và hiển thị lại khi mở app
+- ✅ AI không được bịa số liệu — chỉ tư vấn dựa trên data thực có
+
+---
+
+#### FR-10: Data Export — `Could-have`
+**Actor:** Gym User
+
+**Description:** Người dùng có thể xuất toàn bộ dữ liệu cá nhân.
+
+**Features:**
+- Export workout history ra CSV/JSON
+- Export nutrition logs ra CSV
+
+**Acceptance Criteria:**
+- ✅ File export chứa đầy đủ data trong khoảng thời gian user chọn
+- ✅ Download hoàn thành trong vòng 30 giây
 
 ---
 
 ### 1.3 Non-Functional Requirements
 
-| NFR | Mô tả |
-|-----|-------|
-| **Performance** | Page load < 2s, API response < 500ms |
-| **Responsive** | Hoạt động tốt trên mobile browser |
-| **Security** | JWT auth, HTTPS, input validation |
-| **Data** | User data isolated, backup daily |
-| **Accessibility** | WCAG 2.1 AA cơ bản |
+| NFR | Tiêu chí đo lường |
+|-----|-------------------|
+| **Performance** | First Contentful Paint (FCP) < 2s trên kết nối 4G; API response < 500ms (đo bằng Lighthouse & Postman) |
+| **Responsive** | Hoạt động đúng từ 375px (iPhone SE) đến 1440px desktop; test trên Chrome/Safari/Firefox |
+| **Security** | JWT expiry 7 ngày; rate limit 100 req/phút/IP; input validation toàn bộ bằng Zod; HTTPS bắt buộc trên production |
+| **Data Integrity** | Soft delete cho workout plans & exercises; không mất lịch sử khi user xóa plan |
+| **Backup** | Database backup tự động hàng ngày do Railway (hoặc platform deploy) quản lý |
+| **Availability** | Uptime ≥ 99% (tận dụng SLA của Vercel + Railway free tier) |
 
 ---
 
@@ -86,39 +242,87 @@
 
 Người dùng tự đăng ký, tự quản lý toàn bộ dữ liệu tập luyện và dinh dưỡng của mình.
 
-**User journey:**
+**User Persona:**
+> **Nam, 24 tuổi**, đi làm văn phòng, tập gym 4 buổi/tuần sau giờ làm. Mục tiêu tăng cơ, giảm mỡ. Thường hay quên lịch tập, không nhớ mình đã tập bao nhiêu kg tuần trước, và không biết mình ăn đủ protein chưa.
+
+**User journey — Happy path:**
 ```
 Đăng ký → Onboarding (thông tin cá nhân + mục tiêu)
-→ Tạo Workout Plan → Đặt lịch tập
-→ Log buổi tập → Xem Progress → Nhận AI tư vấn
+→ Tạo Workout Plan → Đặt lịch tập tuần này
+→ Nhận notification nhắc nhở → Log buổi tập
+→ Xem Progress dashboard → Chat với AI Coach để điều chỉnh
 ```
+
+**Edge cases cần xử lý:**
+- User chưa tạo plan → Dashboard vẫn dùng được, hiển thị empty state có hướng dẫn
+- User bỏ tập 2 tuần → Progress chart không bị broken, AI nhận xét dựa trên data thực
+- User đang log session mà tắt tab → Khi mở lại, session vẫn còn (hoặc hỏi có muốn tiếp tục không)
+- Mạng yếu khi đang tập → Cho phép log offline, sync khi có mạng (could-have)
 
 ---
 
 ### 1.5 Screen List & Features
 
-| # | Màn hình | Chức năng chính | Priority |
-|---|----------|-----------------|----------|
-| 1 | **Landing / Login** | Đăng nhập, đăng ký, giới thiệu app | MVP |
-| 2 | **Onboarding** | Setup profile: thông tin cá nhân, mục tiêu | MVP |
-| 3 | **Dashboard (Home)** | Tổng quan hôm nay: lịch tập, calo, PR gần nhất, AI tip | MVP |
-| 4 | **Calendar / Schedule** | Lịch tập dạng tuần/tháng, tạo/xóa buổi tập | MVP |
-| 5 | **Workout Session** | Log buổi tập live: chọn bài, nhập set/rep/kg, timer | MVP |
-| 6 | **Workout History** | Danh sách buổi đã tập, xem chi tiết từng buổi | MVP |
-| 7 | **Workout Plans** | Danh sách plans, tạo plan mới, kích hoạt plan | MVP |
-| 8 | **Plan Detail / Editor** | Chỉnh sửa plan: ngày, bài tập, target | MVP |
-| 9 | **Exercise Library** | Tìm kiếm bài tập, xem hướng dẫn, thêm custom | MVP |
-| 10 | **Exercise Detail** | Chi tiết bài tập + lịch sử sử dụng + PR | MVP |
-| 11 | **Progress Dashboard** | Biểu đồ cân nặng, số đo, volume, strength chart | MVP |
-| 12 | **Body Measurements** | Log cân nặng, số đo, upload ảnh progress | MVP |
-| 13 | **Nutrition Dashboard** | Daily macro dashboard, calo hôm nay | Should |
-| 14 | **Food Log** | Log bữa ăn: sáng/trưa/tối/snack, tìm thực phẩm | Should |
-| 15 | **Nutrition Plan** | Tạo/chỉnh mục tiêu calo & macro theo giai đoạn | Should |
-| 16 | **Food Database** | Tìm kiếm thực phẩm, thêm custom food | Should |
-| 17 | **AI Coach Chat** | Chat với AI, xem phân tích tuần/tháng, nhận gợi ý | Should |
-| 18 | **Profile & Settings** | Thông tin cá nhân, mục tiêu, notification settings | MVP |
+| # | Màn hình | Chức năng chính | Priority | Empty State |
+|---|----------|-----------------|----------|-------------|
+| 1 | **Landing** | Giới thiệu app, CTA đăng ký/đăng nhập | MVP | — |
+| 2 | **Login / Register** | Form đăng nhập, đăng ký, OAuth Google | MVP | — |
+| 3 | **Forgot Password** | Nhập email nhận link reset | MVP | — |
+| 4 | **Onboarding** | Setup profile: thông tin cá nhân, mục tiêu, số buổi/tuần | MVP | — |
+| 5 | **Dashboard (Home)** | Tổng quan hôm nay: lịch tập, calo, PR gần nhất, AI tip | MVP | Hướng dẫn tạo plan & lịch tập |
+| 6 | **Calendar / Schedule** | Lịch tập dạng tuần/tháng, tạo/xóa buổi tập | MVP | "Chưa có lịch tập — Tạo ngay" |
+| 7 | **Workout Session** | Log buổi tập live: chọn bài, nhập set/rep/kg, rest timer | MVP | — |
+| 8 | **Workout History** | Danh sách buổi đã tập, xem chi tiết từng buổi | MVP | "Chưa có buổi tập nào — Bắt đầu tập" |
+| 9 | **Workout Plans** | Danh sách plans, tạo plan mới, kích hoạt plan | MVP | "Chưa có plan — Tạo chương trình tập" |
+| 10 | **Plan Detail / Editor** | Chỉnh sửa plan: thêm ngày, bài tập, target set/rep | MVP | "Chưa có ngày tập — Thêm ngày" |
+| 11 | **Exercise Library** | Tìm kiếm bài tập, lọc nhóm cơ, xem hướng dẫn | MVP | Không tìm thấy → "Thêm bài tập custom" |
+| 12 | **Exercise Detail** | Chi tiết bài tập + lịch sử sử dụng + PR | MVP | Chưa từng tập → "Chưa có lịch sử" |
+| 13 | **Progress Dashboard** | Biểu đồ cân nặng, số đo, volume, strength chart | MVP | "Chưa có data — Log cân nặng đầu tiên" |
+| 14 | **Body Measurements** | Log cân nặng, số đo, upload ảnh progress | MVP | Timeline trống → hướng dẫn log |
+| 15 | **Nutrition Dashboard** | Daily macro dashboard, calo hôm nay vs mục tiêu | Should | "Chưa log bữa nào hôm nay" |
+| 16 | **Food Log** | Log bữa ăn: sáng/trưa/tối/snack, tìm thực phẩm | Should | Bữa trống → "Thêm thực phẩm" |
+| 17 | **Nutrition Plan** | Tạo/chỉnh mục tiêu calo & macro theo giai đoạn | Should | "Chưa có nutrition plan — Tạo ngay" |
+| 18 | **Food Database** | Tìm kiếm thực phẩm (Open Food Facts + custom) | Should | Không tìm thấy → "Thêm thực phẩm custom" |
+| 19 | **AI Coach Chat** | Chat với AI, xem phân tích tuần/tháng, nhận gợi ý | Should | Chào mừng + gợi ý câu hỏi đầu tiên |
+| 20 | **Profile & Settings** | Thông tin cá nhân, mục tiêu, đơn vị, notifications | MVP | — |
 
-**Tổng: 18 màn hình** (13 MVP + 5 Should-have)
+**Tổng: 20 màn hình** (14 MVP + 6 Should-have)
+
+---
+
+**Navigation Flow:**
+
+```
+Landing
+  ├── [Đăng nhập] → Login → Dashboard
+  ├── [Đăng ký]   → Register → Onboarding → Dashboard
+  └── [Quên MK]   → Forgot Password → (email) → Login
+
+Dashboard
+  ├── [Hôm nay có lịch] → Workout Session
+  ├── [Xem lịch]        → Calendar / Schedule
+  ├── [Xem Progress]    → Progress Dashboard
+  └── [AI tip]          → AI Coach Chat
+
+Calendar
+  ├── [Chọn buổi] → Workout Session (live logging)
+  └── [+ Tạo]     → Tạo lịch tập mới (modal/drawer)
+
+Workout Session
+  ├── [Thêm bài]  → Exercise Library → chọn → quay lại Session
+  └── [Kết thúc] → Workout History (detail buổi vừa tập)
+
+Workout Plans → Plan Detail / Editor
+  └── [Thêm bài] → Exercise Library → chọn → quay lại Editor
+
+Progress Dashboard
+  └── [+ Log]    → Body Measurements
+
+Nutrition Dashboard
+  └── [+ Thêm]  → Food Log → Food Database (nếu tìm thực phẩm)
+
+Sidebar / Bottom Nav: Dashboard | Schedule | Workout | Nutrition | Progress | AI | Profile
+```
 
 ---
 

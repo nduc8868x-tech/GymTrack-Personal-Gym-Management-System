@@ -963,26 +963,125 @@ Table: ai_messages
 
 ## PHASE 3: IMPLEMENTATION WORKFLOW
 
-```
-✅ Requirement + Specification
-✅ Tech Stack
-✅ Architecture
-✅ Module Structure
-✅ Database Schema
+### Tình trạng tài liệu
 
-⬜ Step 1:  Project boilerplate (Next.js + Node.js setup)
-⬜ Step 2:  Backend — Auth APIs (register, login, profile)
-⬜ Step 3:  Frontend — Auth screens + Layout + Routing
-⬜ Step 4:  Seed exercise library data (~100 bài)
-⬜ Step 5:  Backend — Workout Sessions APIs
-⬜ Step 6:  Frontend — Workout Session screen (core feature)
-⬜ Step 7:  Backend — Workout Plans APIs
-⬜ Step 8:  Frontend — Plans & Schedule screens
-⬜ Step 9:  Progress Tracking (measurements + charts)
-⬜ Step 10: Nutrition Module
-⬜ Step 11: AI Coach integration (Claude API)
-⬜ Step 12: Polish — Notifications, PWA, responsive
+| Hạng mục | Trạng thái |
+|----------|-----------|
+| Requirement + Specification | ✅ Done |
+| Tech Stack | ✅ Done |
+| Architecture | ✅ Done |
+| Module Structure | ✅ Done |
+| Database Schema | ✅ Done |
+
+---
+
+### Lộ trình thực hiện
+
+#### SPRINT 0 — Setup & Foundation
+
 ```
+⬜ 0.1  Tạo monorepo gymtrack/, init git, kết nối GitHub remote
+⬜ 0.2  Setup môi trường: tạo .env.example (Claude API key, DB URL, Cloudinary, Resend, Open Food Facts)
+⬜ 0.3  Khởi tạo Backend: Node.js + Express + TypeScript + ESLint + Prettier
+⬜ 0.4  Khởi tạo Frontend: Next.js 15 + Tailwind + shadcn/ui
+⬜ 0.5  Setup PostgreSQL local bằng Docker (docker-compose.yml)
+⬜ 0.6  Khởi tạo Prisma: schema.prisma, chạy migration lần đầu
+⬜ 0.7  Seed exercise library (~100 bài tập vào DB)
+```
+
+#### SPRINT 1 — Authentication
+
+```
+⬜ 1.1  BE: POST /auth/register, POST /auth/login (JWT access + refresh token)
+⬜ 1.2  BE: POST /auth/logout, POST /auth/refresh (invalidate refresh token)
+⬜ 1.3  BE: POST /auth/forgot-password, POST /auth/reset-password (Resend email)
+⬜ 1.4  BE: GET /auth/me, PUT /auth/profile, PUT /auth/settings
+⬜ 1.5  BE: Auth middleware (JWT verify + attach req.user)
+⬜ 1.6  FE: Layout + Sidebar/Bottom Nav + route protection (redirect nếu chưa login)
+⬜ 1.7  FE: Login screen, Register screen
+⬜ 1.8  FE: Forgot Password screen, Onboarding screen (multi-step)
+⬜ 1.9  FE: Zustand authStore + axios interceptor tự động refresh token
+```
+
+#### SPRINT 2 — Exercise Library & Workout Core
+
+```
+⬜ 2.1  BE: GET /exercises (search + filter), GET /exercises/:id
+⬜ 2.2  BE: POST /exercises (custom), DELETE /exercises/:id
+⬜ 2.3  FE: Exercise Library screen (search, filter theo nhóm cơ)
+⬜ 2.4  FE: Exercise Detail screen (info + PR history)
+⬜ 2.5  BE: POST /workouts/sessions (bắt đầu), PUT /workouts/sessions/:id (kết thúc)
+⬜ 2.6  BE: POST /workouts/sessions/:id/sets, DELETE set
+⬜ 2.7  BE: GET /workouts/sessions (list), GET /workouts/sessions/:id (detail)
+⬜ 2.8  FE: Workout Session screen (live logging + rest timer)
+⬜ 2.9  FE: Workout History screen + Session Detail screen
+⬜ 2.10 FE: Zustand workoutStore + timerStore
+```
+
+#### SPRINT 3 — Workout Plans & Schedule
+
+```
+⬜ 3.1  BE: CRUD /plans, /plans/:id/activate
+⬜ 3.2  BE: CRUD plan days & plan exercises
+⬜ 3.3  BE: CRUD /schedule (tạo, cập nhật, xóa lịch tập)
+⬜ 3.4  FE: Workout Plans screen + Plan Detail / Editor
+⬜ 3.5  FE: Calendar / Schedule screen
+⬜ 3.6  BE: node-cron reminder job (Web Push + Resend email fallback)
+```
+
+#### SPRINT 4 — Progress Tracking
+
+```
+⬜ 4.1  BE: POST/GET /progress/measurements
+⬜ 4.2  BE: GET /progress/charts (weight, volume, strength data)
+⬜ 4.3  BE: GET /progress/records (Personal Records history)
+⬜ 4.4  BE: Auto-update personal_records khi log set mới (is_current_best logic)
+⬜ 4.5  FE: Progress Dashboard screen (Recharts: biểu đồ cân nặng, volume, 1RM)
+⬜ 4.6  FE: Body Measurements screen (log + timeline + upload ảnh Cloudinary)
+```
+
+#### SPRINT 5 — Nutrition Module
+
+```
+⬜ 5.1  BE: POST/GET/PUT /nutrition/plan
+⬜ 5.2  BE: GET /nutrition/foods/search (proxy Open Food Facts + cache), POST custom food
+⬜ 5.3  BE: POST/GET/DELETE /nutrition/logs
+⬜ 5.4  FE: Nutrition Dashboard screen (daily macro breakdown)
+⬜ 5.5  FE: Food Log screen + Food Search bottom sheet
+⬜ 5.6  FE: Nutrition Plan screen
+⬜ 5.7  FE: Zustand nutritionStore (daily state)
+```
+
+#### SPRINT 6 — AI Coach
+
+```
+⬜ 6.1  BE: aiService.ts — tích hợp Claude API, build context từ user data
+⬜ 6.2  BE: CRUD /ai/conversations, POST /ai/conversations/:id/messages (stream)
+⬜ 6.3  BE: GET /ai/insights (phân tích tuần/tháng tự động)
+⬜ 6.4  FE: AI Coach Chat screen (streaming response, lịch sử conversations)
+```
+
+#### SPRINT 7 — Polish & Deploy
+
+```
+⬜ 7.1  Responsive: kiểm tra toàn bộ screens trên 375px mobile
+⬜ 7.2  Error states: network error, 404, session expired, API fallback
+⬜ 7.3  Empty states: kiểm tra toàn bộ 22 màn hình
+⬜ 7.4  Viết test: auth APIs, workout session APIs (BE)
+⬜ 7.5  Setup CI/CD: GitHub Actions (lint + test on PR)
+⬜ 7.6  Deploy BE lên Railway + setup PostgreSQL managed
+⬜ 7.7  Deploy FE lên Vercel + config environment variables
+⬜ 7.8  Smoke test toàn bộ happy path trên production
+```
+
+---
+
+### Nguyên tắc thực hiện
+
+- **BE trước FE** trong mỗi feature — có API mới code UI
+- **Test API bằng Postman/Thunder Client** trước khi kết nối FE
+- **Commit thường xuyên** theo convention: `feat:`, `fix:`, `docs:`, `refactor:`
+- **Mỗi sprint hoàn thành** → demo & review trước khi sang sprint tiếp theo
 
 ---
 

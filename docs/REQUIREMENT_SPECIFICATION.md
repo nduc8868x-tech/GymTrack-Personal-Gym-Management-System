@@ -484,45 +484,74 @@ Backend gọi external services (không phải DB):
 
 ```
 gymtrack/
-├── docs/                            # Tài liệu dự án
+├── docs/                                 # Tài liệu dự án
 │   └── REQUIREMENT_SPECIFICATION.md
+├── docker-compose.yml                    # Local dev: PostgreSQL + BE
 │
-├── frontend/                        # Next.js 14 App
+├── frontend/                             # Next.js 15 App
+│   ├── public/
+│   │   ├── icons/                        # PWA icons
+│   │   └── manifest.json                 # Web App Manifest (Web Push)
 │   ├── src/
 │   │   ├── app/
-│   │   │   ├── (auth)/              # Public routes
+│   │   │   ├── (auth)/                   # Public routes (không cần login)
 │   │   │   │   ├── login/
 │   │   │   │   ├── register/
-│   │   │   │   └── onboarding/
-│   │   │   ├── (dashboard)/         # Protected routes
-│   │   │   │   ├── page.tsx         # Dashboard home
-│   │   │   │   ├── schedule/
+│   │   │   │   ├── forgot-password/      # Nhập email nhận link reset
+│   │   │   │   └── onboarding/           # Multi-step setup sau đăng ký
+│   │   │   ├── (dashboard)/              # Protected routes (cần login)
+│   │   │   │   ├── page.tsx              # Dashboard home
+│   │   │   │   ├── schedule/             # Calendar & lịch tập
 │   │   │   │   ├── workout/
+│   │   │   │   │   ├── page.tsx          # Workout History (danh sách)
+│   │   │   │   │   ├── session/
+│   │   │   │   │   │   └── page.tsx      # Live session logging (fullscreen)
+│   │   │   │   │   └── [sessionId]/
+│   │   │   │   │       └── page.tsx      # Session Detail (readonly)
 │   │   │   │   ├── plans/
+│   │   │   │   │   ├── page.tsx          # Danh sách plans
+│   │   │   │   │   └── [planId]/
+│   │   │   │   │       └── page.tsx      # Plan Detail / Editor
 │   │   │   │   ├── exercises/
-│   │   │   │   ├── progress/
-│   │   │   │   ├── nutrition/
-│   │   │   │   ├── ai-coach/
-│   │   │   │   └── profile/
+│   │   │   │   │   ├── page.tsx          # Exercise Library
+│   │   │   │   │   └── [exerciseId]/
+│   │   │   │   │       └── page.tsx      # Exercise Detail
+│   │   │   │   ├── progress/             # Progress Dashboard + Body Measurements
+│   │   │   │   ├── nutrition/            # Nutrition Dashboard + Food Log
+│   │   │   │   ├── ai-coach/             # AI Coach Chat
+│   │   │   │   └── profile/              # Profile & Settings
+│   │   │   ├── error.tsx                 # Error boundary (500, network error)
+│   │   │   ├── not-found.tsx             # 404 page
 │   │   │   └── layout.tsx
 │   │   ├── components/
-│   │   │   ├── ui/                  # shadcn/ui base components
-│   │   │   ├── workout/             # WorkoutCard, SetLogger, RestTimer
-│   │   │   ├── nutrition/           # MacroBar, FoodSearch, MealCard
-│   │   │   ├── progress/            # ProgressChart, BodyMetricCard
-│   │   │   └── ai/                  # ChatBubble, InsightCard
-│   │   ├── hooks/                   # Custom React hooks
+│   │   │   ├── ui/                       # shadcn/ui base components
+│   │   │   ├── layout/                   # Sidebar, BottomNav, Header
+│   │   │   ├── workout/                  # WorkoutCard, SetLogger, RestTimer
+│   │   │   ├── nutrition/                # MacroBar, FoodSearch, MealCard
+│   │   │   ├── progress/                 # ProgressChart, BodyMetricCard
+│   │   │   └── ai/                       # ChatBubble, InsightCard
+│   │   ├── hooks/                        # Custom React hooks
+│   │   │   ├── useAuth.ts
+│   │   │   ├── useRestTimer.ts           # Rest timer logic
+│   │   │   └── useActiveSession.ts       # Quản lý live session
 │   │   ├── lib/
-│   │   │   ├── api.ts               # Axios instance + API calls
-│   │   │   ├── auth.ts              # Auth helpers, token management
-│   │   │   └── utils.ts
-│   │   ├── stores/                  # Zustand stores
-│   │   │   ├── authStore.ts
-│   │   │   └── workoutStore.ts
-│   │   └── types/                   # Shared TypeScript types
+│   │   │   ├── api.ts                    # Axios instance + interceptor refresh token
+│   │   │   ├── auth.ts                   # Token helpers (get/set/clear)
+│   │   │   ├── utils.ts                  # cn(), formatDate(), calcMacro()...
+│   │   │   ├── constants.ts              # API_URL, default rest times, muscle groups
+│   │   │   └── queryKeys.ts              # React Query key factory
+│   │   ├── stores/                       # Zustand stores (client state only)
+│   │   │   ├── authStore.ts              # User info, isAuthenticated
+│   │   │   ├── workoutStore.ts           # Active session state
+│   │   │   ├── nutritionStore.ts         # Daily food log state
+│   │   │   └── timerStore.ts             # Rest timer state
+│   │   └── types/                        # Shared TypeScript interfaces & types
 │
-├── backend/                         # Node.js + Express + TypeScript
+├── backend/                              # Node.js + Express + TypeScript
 │   ├── src/
+│   │   ├── config/
+│   │   │   ├── env.ts                    # Zod schema validate env variables
+│   │   │   └── database.ts               # Prisma client singleton
 │   │   ├── controllers/
 │   │   │   ├── authController.ts
 │   │   │   ├── workoutController.ts
@@ -540,18 +569,30 @@ gymtrack/
 │   │   │   ├── nutrition.ts
 │   │   │   └── ai.ts
 │   │   ├── services/
-│   │   │   ├── aiService.ts         # Claude API integration
-│   │   │   ├── nutritionService.ts  # Open Food Facts + macro calc
-│   │   │   └── notificationService.ts
+│   │   │   ├── aiService.ts              # Claude API integration
+│   │   │   ├── nutritionService.ts       # Open Food Facts proxy + macro calc
+│   │   │   ├── notificationService.ts    # Web Push API
+│   │   │   └── emailService.ts           # Resend: reset password, reminders
 │   │   ├── middleware/
-│   │   │   ├── auth.ts              # JWT verify
-│   │   │   └── validation.ts        # Zod schemas
+│   │   │   ├── auth.ts                   # JWT verify + attach user to req
+│   │   │   ├── validation.ts             # Zod request body/query validation
+│   │   │   └── errorHandler.ts           # Global error handler middleware
+│   │   ├── utils/
+│   │   │   ├── response.ts               # ApiResponse formatter {success, data, error}
+│   │   │   ├── jwt.ts                    # signToken(), verifyToken()
+│   │   │   └── password.ts               # hashPassword(), comparePassword()
+│   │   ├── types/
+│   │   │   ├── index.ts                  # UserPayload, JwtPayload, ApiResponse<T>
+│   │   │   └── express.d.ts              # Extend Express Request với req.user
 │   │   ├── jobs/
-│   │   │   └── reminderJob.ts       # Cron: workout reminders
+│   │   │   └── reminderJob.ts            # node-cron: check & gửi workout reminders
 │   │   └── app.ts
-│   └── prisma/
-│       ├── schema.prisma
-│       └── seed.ts                  # Seed exercise library
+│   ├── prisma/
+│   │   ├── schema.prisma
+│   │   └── seed.ts                       # Seed 100+ exercises vào DB
+│   └── __tests__/                        # Test directory (viết sau)
+│       ├── auth.test.ts
+│       └── workout.test.ts
 ```
 
 ---

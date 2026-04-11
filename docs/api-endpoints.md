@@ -27,7 +27,7 @@
 
 | Method | Endpoint | Query Params | Description |
 |--------|----------|-------------|-------------|
-| POST | `/api/auth/register` | — | Register a new account |
+| POST | `/api/auth/register` | — | Register a new account (email/password) |
 | POST | `/api/auth/login` | — | Login, returns access + refresh token |
 | POST | `/api/auth/logout` | — | Invalidate refresh token in DB |
 | POST | `/api/auth/refresh` | — | Get new access token from refresh token (cookie) |
@@ -36,6 +36,8 @@
 | GET | `/api/auth/me` | — | Get currently logged-in user info |
 | PUT | `/api/auth/profile` | — | Update profile (name, height, gender...) |
 | PUT | `/api/auth/settings` | — | Update settings (units, timezone, notifications) |
+| GET | `/api/auth/google` | — | Redirect to Google OAuth consent screen |
+| GET | `/api/auth/google/callback` | `code`, `state` | Google OAuth callback — exchange code for tokens |
 
 **Key Request Bodies — AUTH:**
 
@@ -44,6 +46,8 @@ POST /api/auth/register       → { "email": "string", "password": "string", "na
 POST /api/auth/login          → { "email": "string", "password": "string" }
 POST /api/auth/reset-password → { "token": "string", "new_password": "string" }
 PUT  /api/auth/profile        → { "name": "string", "height_cm": 175, "gender": "male", "birthdate": "2000-01-01" }
+// GET /api/auth/google → no body; redirects to Google
+// GET /api/auth/google/callback → handled server-side; redirects FE to /dashboard with tokens
 ```
 
 ---
@@ -75,6 +79,7 @@ POST /api/exercises → { "name": "string", "primary_muscle": "chest", "equipmen
 | PUT | `/api/plans/:id` | — | Update plan (name, description, split type) |
 | DELETE | `/api/plans/:id` | — | Delete plan (soft delete, preserves session history) |
 | POST | `/api/plans/:id/activate` | — | Activate plan (deactivates previous plan) |
+| POST | `/api/plans/:id/duplicate` | — | Duplicate plan (deep copy: plan + all days + exercises) |
 | POST | `/api/plans/:id/days` | — | Add a plan day |
 | PUT | `/api/plans/:id/days/:dayId` | — | Update a plan day |
 | DELETE | `/api/plans/:id/days/:dayId` | — | Delete a plan day |
@@ -104,6 +109,7 @@ POST /api/plans/:id/days/:dayId/exercises → {
 | GET | `/api/workouts/sessions/:id` | — | Details of one session + all sets |
 | PUT | `/api/workouts/sessions/:id` | — | End session / update notes |
 | POST | `/api/workouts/sessions/:id/sets` | — | Log one set (exercise, reps, kg) |
+| PUT | `/api/workouts/sessions/:id/sets/:setId` | — | Edit a logged set (correct reps/weight) |
 | DELETE | `/api/workouts/sessions/:id/sets/:setId` | — | Delete an incorrectly logged set |
 
 **Key Request Bodies — WORKOUT SESSIONS:**
@@ -114,6 +120,7 @@ POST /api/workouts/sessions/:id/sets → {
   "exercise_id": "uuid", "set_number": 1, "reps": 10,
   "weight_kg": 80.0, "duration_seconds": null
 }
+PUT /api/workouts/sessions/:id/sets/:setId → { "reps": 12, "weight_kg": 82.5 }
 PUT /api/workouts/sessions/:id → { "ended_at": "ISO8601", "notes": "string?" }
 ```
 
@@ -177,6 +184,29 @@ POST /api/progress/measurements → {
 POST /api/nutrition/plan → { "name": "string?", "daily_calories": 2500, "protein_g": 180, "carbs_g": 250, "fat_g": 80, "start_date": "YYYY-MM-DD" }
 POST /api/nutrition/logs → { "food_id": "uuid", "logged_at": "YYYY-MM-DD", "meal_type": "lunch", "quantity_g": 150 }
 POST /api/nutrition/foods → { "name": "string", "calories_per100g": 350, "protein_per100g": 25, "carbs_per100g": 40, "fat_per100g": 10 }
+```
+
+---
+
+## NOTIFICATIONS
+
+| Method | Endpoint | Query Params | Description |
+|--------|----------|-------------|-------------|
+| POST | `/api/notifications/subscribe` | — | Register browser's Web Push subscription |
+| DELETE | `/api/notifications/subscribe` | — | Unsubscribe current device from push notifications |
+
+**Key Request Bodies — NOTIFICATIONS:**
+
+```json
+POST /api/notifications/subscribe → {
+  "endpoint": "https://fcm.googleapis.com/...",
+  "keys": {
+    "p256dh": "string",   // Public key for payload encryption
+    "auth": "string"      // Auth secret
+  },
+  "user_agent": "string?" // Optional: browser/device label
+}
+// DELETE /api/notifications/subscribe → { "endpoint": "string" }
 ```
 
 ---

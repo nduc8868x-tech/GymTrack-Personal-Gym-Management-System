@@ -32,7 +32,7 @@ Register → Onboarding (personal info + goals)
 | Missed 2 weeks of training | Progress chart is not broken; AI comments only on available real data |
 | Tab closed mid-session while logging | On reopen, prompt "Would you like to continue your unfinished workout?" |
 | Weak network during workout | Show connection lost notice; entered data is preserved; auto-retry when reconnected |
-| Claude API timeout | Show "AI Coach temporarily unavailable, please try again" — app does not crash |
+| Gemini API timeout | Show "AI Coach temporarily unavailable, please try again" — app does not crash |
 | Open Food Facts API down | Show notice, allow manual nutrition entry |
 | Progress photo upload fails | Show toast error; photo not lost — user can retry |
 | JWT expired (15 min) | Silent refresh using refresh token; if refresh token also expired → redirect to Login |

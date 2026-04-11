@@ -12,7 +12,9 @@
 Table: users
   id              UUID PK DEFAULT gen_random_uuid()
   email           VARCHAR UNIQUE NOT NULL
-  password_hash   VARCHAR
+  password_hash   VARCHAR                            -- nullable: null if registered via OAuth
+  provider        ENUM('local','google') DEFAULT 'local'
+  google_id       VARCHAR UNIQUE                     -- Google sub ID, null if local auth
   name            VARCHAR NOT NULL
   avatar_url      VARCHAR
   gender          ENUM('male','female','other')
@@ -45,6 +47,16 @@ Table: user_settings
   notifications_enabled BOOLEAN DEFAULT true
   timezone              VARCHAR DEFAULT 'Asia/Ho_Chi_Minh'
   updated_at            TIMESTAMP
+
+Table: push_subscriptions                    -- Web Push API subscriptions per device/browser
+  id              UUID PK
+  user_id         UUID FK -> users (CASCADE DELETE)
+  endpoint        VARCHAR NOT NULL           -- Push service URL (browser-provided)
+  p256dh          VARCHAR NOT NULL           -- Public key for payload encryption
+  auth            VARCHAR NOT NULL           -- Auth secret for payload encryption
+  user_agent      VARCHAR                    -- Browser/device identifier (for display)
+  created_at      TIMESTAMP DEFAULT NOW()
+  UNIQUE (user_id, endpoint)                 -- one subscription per browser per user
 ```
 
 ---

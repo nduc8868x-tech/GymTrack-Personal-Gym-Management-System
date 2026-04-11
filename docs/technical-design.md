@@ -20,13 +20,13 @@
 | **Auth** | JWT (access 15min + refresh 7 days) + bcrypt | Stateless, self-implemented for full control; bcrypt for password hashing |
 | **Database** | PostgreSQL | Relational, excellent support for analytics queries (progress charts, volume tracking) |
 | **ORM** | Prisma | Type-safe queries, auto-generated types from schema, easy migration management |
-| **AI** | Claude API (Anthropic) | Analyze workout/nutrition data, personalized advice, context-aware conversations |
-| **Email** | Resend | Send password reset & iOS reminder fallback emails; free tier 3,000 emails/month |
+| **AI** | Gemini API (Google AI) | Analyze workout/nutrition data, personalized advice, context-aware conversations; model `gemini-2.0-flash`, free tier 1,500 req/day |
+| **Email** | Brevo (Sendinblue) | Send password reset & iOS reminder fallback emails; free tier 300 emails/day (9,000/month) |
 | **Food API** | Open Food Facts API | Free, open-source nutrition database with 3M+ products |
 | **Notifications** | Web Push API + node-cron | Web Push for desktop/Android; node-cron schedules minute-by-minute schedule checks |
-| **File Storage** | Cloudinary | Upload & optimize progress photos; free tier 25GB storage |
-| **Deployment** | Vercel (FE) + Railway (BE + DB) | Vercel optimized for Next.js; Railway managed PostgreSQL + auto-deploy from GitHub |
-| **Monitoring** | Sentry (could-have) | Track runtime errors FE + BE in production; free tier 5,000 errors/month |
+| **File Storage** | ImageKit | Upload & optimize progress photos; free tier 20GB bandwidth/month + 3GB storage |
+| **Deployment** | Vercel (FE) + Render (BE) + Neon (DB) | Vercel optimized for Next.js (hobby plan free); Render free tier for Node.js; Neon serverless PostgreSQL free tier |
+| **Monitoring** | Better Stack (could-have) | Track runtime errors FE + BE in production; free tier 100,000 errors/month |
 
 ---
 
@@ -48,7 +48,7 @@
 │                BACKEND (Node.js + Express + TS)              │
 │  ┌────────────────┐  ┌─────────────┐  ┌──────────────────┐  │
 │  │   Auth         │  │ Controllers │  │   AI Service     │  │
-│  │ JWT + Resend   │  │  + Routes   │  │  (Claude API)    │  │
+│  │ JWT + Brevo   │  │  + Routes   │  │  (Gemini API)    │  │
 │  │ (email service)│  │             │  │                  │  │
 │  └────────────────┘  └──────┬──────┘  └──────────────────┘  │
 │                             │                                │
@@ -69,7 +69,7 @@
 
 Backend calls external services (not the DB):
 ┌───────────────┐  ┌──────────────────┐  ┌──────────────┐
-│  Cloudinary   │  │ Open Food Facts  │  │   Resend     │
+│  ImageKit     │  │ Open Food Facts  │  │   Brevo      │
 │ (upload &     │  │ (food search,    │  │ (email:      │
 │  store photos)│  │  nutrition data) │  │  reset/remind│
 └───────────────┘  └──────────────────┘  └──────────────┘
@@ -81,13 +81,13 @@ Backend calls external services (not the DB):
 
 2. **Access token expired (15min):** FE automatically calls `POST /api/auth/refresh` with `refresh_token` cookie (httpOnly) → BE validates → returns new `access_token` → FE retries original request
 
-3. **AI request:** FE calls `POST /api/ai/chat` → BE aggregates context (user's workout history, measurements, nutrition) → calls Claude API → streams response back to FE
+3. **AI request:** FE calls `POST /api/ai/chat` → BE aggregates context (user's workout history, measurements, nutrition) → calls Gemini API → streams response back to FE
 
-4. **Cron job reminder:** node-cron runs every minute in BE process → queries `scheduled_workouts` due soon → sends Web Push (Android/Desktop) or email via Resend (iOS fallback)
+4. **Cron job reminder:** node-cron runs every minute in BE process → queries `scheduled_workouts` due soon → sends Web Push (Android/Desktop) or email via Brevo (iOS fallback)
 
-   > **Recovery on server restart:** On startup, query all `scheduled_workouts` where `scheduled_date = today` AND `scheduled_time <= NOW()` AND `reminder_sent = false` → send immediately (catch up missed reminders). `reminder_sent = true` after successful send → prevents duplicates. Web Push failure → retry once after 30 seconds → if still fails → fallback to Resend email.
+   > **Recovery on server restart:** On startup, query all `scheduled_workouts` where `scheduled_date = today` AND `scheduled_time <= NOW()` AND `reminder_sent = false` → send immediately (catch up missed reminders). `reminder_sent = true` after successful send → prevents duplicates. Web Push failure → retry once after 30 seconds → if still fails → fallback to Brevo email.
 
-5. **Photo upload:** FE sends file to BE → BE uploads to Cloudinary → saves `photo_url` to DB
+5. **Photo upload:** FE sends file to BE → BE uploads to ImageKit → saves `photo_url` to DB
 
 6. **Food search:** FE calls BE → BE calls Open Food Facts API → transforms & returns to FE (BE acts as proxy to hide rate limits and cache results)
 
@@ -188,10 +188,10 @@ gymtrack/
 │   │   │   ├── nutrition.ts
 │   │   │   └── ai.ts
 │   │   ├── services/
-│   │   │   ├── aiService.ts              # Claude API integration
+│   │   │   ├── aiService.ts              # Gemini API integration
 │   │   │   ├── nutritionService.ts       # Open Food Facts proxy + macro calculation
 │   │   │   ├── notificationService.ts    # Web Push API
-│   │   │   └── emailService.ts           # Resend: reset password, reminders
+│   │   │   └── emailService.ts           # Brevo: reset password, reminders
 │   │   ├── middleware/
 │   │   │   ├── auth.ts                   # JWT verify + attach user to req
 │   │   │   ├── validation.ts             # Zod request body/query validation

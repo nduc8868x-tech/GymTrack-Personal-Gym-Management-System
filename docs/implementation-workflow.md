@@ -15,7 +15,7 @@
 | Tech Stack | ✅ Done |
 | Architecture | ✅ Done |
 | Module Structure | ✅ Done |
-| Database Schema | ✅ Done |
+| Database Schema | Not Done |
 
 ---
 
@@ -25,12 +25,14 @@
 
 ```
 ⬜ 0.1  Create monorepo gymtrack/, init git, connect to GitHub remote
-⬜ 0.2  Setup environment: create .env.example (Claude API key, DB URL, Cloudinary, Resend, Open Food Facts)
+⬜ 0.2  Setup environment: create .env.example (Gemini API key, DB URL (Neon), ImageKit, Brevo, Open Food Facts,
+        Google OAuth client ID/secret, VAPID keys for Web Push)
 ⬜ 0.3  Initialize Backend: Node.js + Express + TypeScript + ESLint + Prettier
 ⬜ 0.4  Initialize Frontend: Next.js 15 + Tailwind + shadcn/ui
 ⬜ 0.5  Setup local PostgreSQL via Docker (docker-compose.yml)
 ⬜ 0.6  Initialize Prisma: schema.prisma, run first migration
 ⬜ 0.7  Seed exercise library (~100 exercises into DB)
+⬜ 0.8  Setup ImageKit SDK config (account, API keys, URL endpoint)
 ```
 
 ### SPRINT 1 — Authentication
@@ -38,8 +40,9 @@
 ```
 ⬜ 1.1  BE: POST /auth/register, POST /auth/login (JWT access + refresh token)
 ⬜ 1.2  BE: POST /auth/logout, POST /auth/refresh (invalidate refresh token)
-⬜ 1.3  BE: POST /auth/forgot-password, POST /auth/reset-password (Resend email)
+⬜ 1.3  BE: POST /auth/forgot-password, POST /auth/reset-password (Brevo email)
 ⬜ 1.4  BE: GET /auth/me, PUT /auth/profile, PUT /auth/settings
+⬜ 1.5a BE: POST /auth/google + GET /auth/google/callback (Passport.js google-oauth20 strategy)
 ⬜ 1.5  BE: Auth middleware (JWT verify + attach req.user)
 ⬜ 1.6  FE: Layout + Sidebar/Bottom Nav + route protection (redirect if not logged in)
 ⬜ 1.7  FE: Login screen, Register screen
@@ -60,6 +63,7 @@
 ⬜ 2.8  FE: Workout Session screen (live logging + rest timer)
 ⬜ 2.9  FE: Workout History screen + Session Detail screen
 ⬜ 2.10 FE: Zustand workoutStore + timerStore
+⬜ 2.11 BE: Auto-update personal_records when logging a new set (is_current_best logic)
 ```
 
 ### SPRINT 3 — Workout Plans & Schedule
@@ -70,7 +74,11 @@
 ⬜ 3.3  BE: CRUD /schedule (create, update, delete scheduled workouts)
 ⬜ 3.4  FE: Workout Plans screen + Plan Detail / Editor
 ⬜ 3.5  FE: Calendar / Schedule screen
-⬜ 3.6  BE: node-cron reminder job (Web Push + Resend email fallback)
+⬜ 3.5a BE: POST /notifications/subscribe + DELETE — store push_subscriptions; generate VAPID keys
+⬜ 3.6  BE: Workout reminder job (Web Push + Brevo email fallback)
+        ⚠️  Architecture note: Render free tier spins down after 15min inactivity → node-cron inside
+        the main BE process will NOT fire during sleep. Use a separate Render Cron Job service
+        (always-on, free) that calls an internal endpoint `POST /internal/reminders/check` on schedule.
 ```
 
 ### SPRINT 4 — Progress Tracking
@@ -79,9 +87,8 @@
 ⬜ 4.1  BE: POST/GET /progress/measurements
 ⬜ 4.2  BE: GET /progress/charts (weight, volume, strength data)
 ⬜ 4.3  BE: GET /progress/records (Personal Records history)
-⬜ 4.4  BE: Auto-update personal_records when logging a new set (is_current_best logic)
-⬜ 4.5  FE: Progress Dashboard screen (Recharts: weight, volume, 1RM charts)
-⬜ 4.6  FE: Body Measurements screen (log + timeline + Cloudinary photo upload)
+⬜ 4.4  FE: Progress Dashboard screen (Recharts: weight, volume, 1RM charts)
+⬜ 4.5  FE: Body Measurements screen (log + timeline + ImageKit photo upload)
 ```
 
 ### SPRINT 5 — Nutrition Module
@@ -99,10 +106,12 @@
 ### SPRINT 6 — AI Coach
 
 ```
-⬜ 6.1  BE: aiService.ts — Claude API integration, build context from user data
+⬜ 6.1  BE: aiService.ts — Gemini API integration (`@google/generative-ai`), build context from user data
 ⬜ 6.2  BE: CRUD /ai/conversations, POST /ai/conversations/:id/messages (stream)
 ⬜ 6.3  BE: GET /ai/insights (automated weekly/monthly analysis)
 ⬜ 6.4  FE: AI Coach Chat screen (streaming response, conversation history)
+⬜ 6.5  BE: Gemini API timeout handling (10s cutoff) + fallback error response
+⬜ 6.6  FE: Handle streaming partial chunks, loading indicator, and Gemini API error states
 ```
 
 ### SPRINT 7 — Polish & Deploy
@@ -115,9 +124,9 @@
         - Auth: register, login, refresh token, forgot/reset password
         - Workout: create session, log set, auto-update personal_records
         - Nutrition: log food, macro calculation
-        - AI: mock Claude API response, verify context-building logic
+        - AI: mock Gemini API response, verify context-building logic
 ⬜ 7.5  Setup CI/CD: GitHub Actions (lint + test on PR)
-⬜ 7.6  Deploy BE to Railway + setup managed PostgreSQL
+⬜ 7.6  Deploy BE to Render + setup Neon managed PostgreSQL
 ⬜ 7.7  Deploy FE to Vercel + configure environment variables
 ⬜ 7.8  Smoke test entire happy path on production
 ```

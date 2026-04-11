@@ -1,0 +1,425 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email              String             @unique
+  password_hash      String?
+  provider           Provider           @default(local)
+  google_id          String?            @unique
+  name               String
+  avatar_url         String?
+  gender             Gender?
+  birthdate          DateTime?          @db.Date
+  height_cm          Float?
+  created_at         DateTime           @default(now())
+  updated_at         DateTime?          @updatedAt
+  ai_conversations   AiConversation[]
+  body_measurements  BodyMeasurement[]
+  exercises          Exercise[]
+  food_logs          FoodLog[]
+  foods              Food[]
+  nutrition_plans    NutritionPlan[]
+  personal_records   PersonalRecord[]
+  push_subscriptions PushSubscription[]
+  refresh_tokens     RefreshToken[]
+  scheduled_workouts ScheduledWorkout[]
+  user_goals         UserGoal[]
+  user_settings      UserSettings?
+  workout_plans      WorkoutPlan[]
+  workout_sessions   WorkoutSession[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String   @db.Uuid
+  token_hash String
+  expires_at DateTime
+  created_at DateTime @default(now())
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model UserGoal {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id       String    @db.Uuid
+  goal_type     GoalType
+  target_weight Float?
+  target_date   DateTime? @db.Date
+  is_active     Boolean   @default(true)
+  created_at    DateTime  @default(now())
+  updated_at    DateTime? @updatedAt
+  user          User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("user_goals")
+}
+
+model UserSettings {
+  id                    String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id               String     @unique @db.Uuid
+  weight_unit           WeightUnit @default(kg)
+  notifications_enabled Boolean    @default(true)
+  timezone              String     @default("Asia/Ho_Chi_Minh")
+  updated_at            DateTime?  @updatedAt
+  user                  User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
+}
+
+model PushSubscription {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String   @db.Uuid
+  endpoint   String
+  p256dh     String
+  auth       String
+  user_agent String?
+  created_at DateTime @default(now())
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, endpoint])
+  @@map("push_subscriptions")
+}
+
+model Exercise {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name             String
+  primary_muscle   MuscleGroup
+  equipment        Equipment
+  description      String?
+  video_url        String?
+  image_url        String?
+  is_custom        Boolean          @default(false)
+  created_by       String?          @db.Uuid
+  created_at       DateTime         @default(now())
+  deleted_at       DateTime?
+  exercise_muscles ExerciseMuscle[]
+  creator          User?            @relation(fields: [created_by], references: [id])
+  personal_records PersonalRecord[]
+  plan_exercises   PlanExercise[]
+  session_sets     SessionSet[]
+
+  @@map("exercises")
+}
+
+model ExerciseMuscle {
+  exercise_id  String      @db.Uuid
+  muscle_group MuscleGroup
+  is_primary   Boolean
+  exercise     Exercise    @relation(fields: [exercise_id], references: [id], onDelete: Cascade)
+
+  @@id([exercise_id, muscle_group])
+  @@map("exercise_muscles")
+}
+
+model WorkoutPlan {
+  id                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id            String             @db.Uuid
+  name               String
+  description        String?
+  split_type         SplitType
+  duration_weeks     Int?
+  is_active          Boolean            @default(false)
+  created_at         DateTime           @default(now())
+  updated_at         DateTime?          @updatedAt
+  deleted_at         DateTime?
+  plan_days          PlanDay[]
+  scheduled_workouts ScheduledWorkout[]
+  user               User               @relation(fields: [user_id], references: [id])
+  workout_sessions   WorkoutSession[]
+
+  @@map("workout_plans")
+}
+
+model PlanDay {
+  id                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  plan_id            String             @db.Uuid
+  day_of_week        Int
+  name               String?
+  order_index        Int?
+  updated_at         DateTime?          @updatedAt
+  plan               WorkoutPlan        @relation(fields: [plan_id], references: [id], onDelete: Cascade)
+  plan_exercises     PlanExercise[]
+  scheduled_workouts ScheduledWorkout[]
+  workout_sessions   WorkoutSession[]
+
+  @@unique([plan_id, day_of_week, name])
+  @@map("plan_days")
+}
+
+model PlanExercise {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  plan_day_id  String   @db.Uuid
+  exercise_id  String   @db.Uuid
+  sets         Int?
+  reps_min     Int?
+  reps_max     Int?
+  rest_seconds Int      @default(90)
+  order_index  Int?
+  notes        String?
+  exercise     Exercise @relation(fields: [exercise_id], references: [id])
+  plan_day     PlanDay  @relation(fields: [plan_day_id], references: [id], onDelete: Cascade)
+
+  @@map("plan_exercises")
+}
+
+model ScheduledWorkout {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id        String           @db.Uuid
+  plan_id        String?          @db.Uuid
+  plan_day_id    String?          @db.Uuid
+  name           String?
+  scheduled_date DateTime         @db.Date
+  scheduled_time DateTime?        @db.Time(6)
+  is_completed   Boolean          @default(false)
+  reminder_sent  Boolean          @default(false)
+  created_at     DateTime         @default(now())
+  updated_at     DateTime?        @updatedAt
+  plan_day       PlanDay?         @relation(fields: [plan_day_id], references: [id])
+  plan           WorkoutPlan?     @relation(fields: [plan_id], references: [id])
+  user           User             @relation(fields: [user_id], references: [id])
+  sessions       WorkoutSession[]
+
+  @@index([scheduled_date])
+  @@map("scheduled_workouts")
+}
+
+model WorkoutSession {
+  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id          String            @db.Uuid
+  scheduled_id     String?           @db.Uuid
+  plan_id          String?           @db.Uuid
+  plan_day_id      String?           @db.Uuid
+  name             String?
+  started_at       DateTime
+  ended_at         DateTime?
+  notes            String?
+  created_at       DateTime          @default(now())
+  updated_at       DateTime?         @updatedAt
+  personal_records PersonalRecord[]
+  session_sets     SessionSet[]
+  plan_day         PlanDay?          @relation(fields: [plan_day_id], references: [id])
+  plan             WorkoutPlan?      @relation(fields: [plan_id], references: [id])
+  scheduled        ScheduledWorkout? @relation(fields: [scheduled_id], references: [id])
+  user             User              @relation(fields: [user_id], references: [id])
+
+  @@index([user_id])
+  @@map("workout_sessions")
+}
+
+model SessionSet {
+  id                 String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  session_id         String         @db.Uuid
+  exercise_id        String         @db.Uuid
+  set_number         Int
+  reps               Int?
+  weight_kg          Float?
+  duration_seconds   Int?
+  is_personal_record Boolean        @default(false)
+  created_at         DateTime       @default(now())
+  updated_at         DateTime?      @updatedAt
+  exercise           Exercise       @relation(fields: [exercise_id], references: [id])
+  session            WorkoutSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+
+  @@index([session_id])
+  @@map("session_sets")
+}
+
+model PersonalRecord {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id         String          @db.Uuid
+  exercise_id     String          @db.Uuid
+  session_id      String?         @db.Uuid
+  weight_kg       Float?
+  reps            Int?
+  one_rm_estimate Float?
+  is_current_best Boolean         @default(false)
+  achieved_at     DateTime        @db.Date
+  exercise        Exercise        @relation(fields: [exercise_id], references: [id])
+  session         WorkoutSession? @relation(fields: [session_id], references: [id])
+  user            User            @relation(fields: [user_id], references: [id])
+
+  @@index([user_id, exercise_id])
+  @@map("personal_records")
+}
+
+model BodyMeasurement {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id        String    @db.Uuid
+  measured_at    DateTime  @db.Date
+  weight_kg      Float?
+  body_fat_pct   Float?
+  chest_cm       Float?
+  waist_cm       Float?
+  hips_cm        Float?
+  left_arm_cm    Float?
+  right_arm_cm   Float?
+  left_thigh_cm  Float?
+  right_thigh_cm Float?
+  photo_url      String?
+  notes          String?
+  created_at     DateTime  @default(now())
+  updated_at     DateTime? @updatedAt
+  user           User      @relation(fields: [user_id], references: [id])
+
+  @@index([user_id, measured_at])
+  @@map("body_measurements")
+}
+
+model NutritionPlan {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id        String    @db.Uuid
+  name           String?
+  daily_calories Int?
+  protein_g      Int?
+  carbs_g        Int?
+  fat_g          Int?
+  is_active      Boolean   @default(false)
+  start_date     DateTime? @db.Date
+  end_date       DateTime? @db.Date
+  created_at     DateTime  @default(now())
+  updated_at     DateTime? @updatedAt
+  user           User      @relation(fields: [user_id], references: [id])
+
+  @@map("nutrition_plans")
+}
+
+model Food {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name               String
+  brand              String?
+  calories_per100g   Float
+  protein_per100g    Float     @default(0)
+  carbs_per100g      Float     @default(0)
+  fat_per100g        Float     @default(0)
+  fiber_per100g      Float     @default(0)
+  serving_size_g     Float?
+  serving_unit       String?
+  open_food_facts_id String?
+  is_custom          Boolean   @default(false)
+  created_by         String?   @db.Uuid
+  created_at         DateTime  @default(now())
+  food_logs          FoodLog[]
+  creator            User?     @relation(fields: [created_by], references: [id])
+
+  @@map("foods")
+}
+
+model FoodLog {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String    @db.Uuid
+  food_id    String    @db.Uuid
+  logged_at  DateTime  @db.Date
+  meal_type  MealType
+  quantity_g Float
+  created_at DateTime  @default(now())
+  updated_at DateTime? @updatedAt
+  food       Food      @relation(fields: [food_id], references: [id])
+  user       User      @relation(fields: [user_id], references: [id])
+
+  @@index([user_id, logged_at])
+  @@map("food_logs")
+}
+
+model AiConversation {
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id          String        @db.Uuid
+  context_type     AiContextType @default(general)
+  context_ref_id   String?       @db.Uuid
+  context_snapshot Json?
+  title            String?
+  created_at       DateTime      @default(now())
+  updated_at       DateTime?     @updatedAt
+  user             User          @relation(fields: [user_id], references: [id])
+  messages         AiMessage[]
+
+  @@map("ai_conversations")
+}
+
+model AiMessage {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversation_id String         @db.Uuid
+  role            AiRole
+  content         String
+  created_at      DateTime       @default(now())
+  conversation    AiConversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+
+  @@map("ai_messages")
+}
+
+enum Provider {
+  local
+  google
+}
+
+enum Gender {
+  male
+  female
+  other
+}
+
+enum GoalType {
+  muscle_gain
+  fat_loss
+  strength
+  general_health
+}
+
+enum WeightUnit {
+  kg
+  lbs
+}
+
+enum MuscleGroup {
+  chest
+  back
+  legs
+  shoulders
+  arms
+  core
+  cardio
+  full_body
+}
+
+enum Equipment {
+  barbell
+  dumbbell
+  machine
+  cable
+  bodyweight
+  other
+}
+
+enum SplitType {
+  full_body
+  upper_lower
+  ppl
+  custom
+}
+
+enum MealType {
+  breakfast
+  lunch
+  dinner
+  snack
+}
+
+enum AiContextType {
+  general
+  workout_analysis
+  nutrition_advice
+  progress_review
+}
+
+enum AiRole {
+  user
+  assistant
+}

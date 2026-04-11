@@ -217,7 +217,7 @@
 | **Backup** | Automatic daily database backup managed by Railway (or deployment platform) |
 | **Availability** | Uptime ≥ 99% (leveraging Vercel + Railway free tier SLA) |
 | **Browser Support** | Web Push Notifications **not supported on iOS Safari < 16.4** — fallback: send reminders via email |
-| **API Fallback** | Open Food Facts API down → show notice, allow manual entry; Claude API timeout (>15s) → show error message, app does not crash |
+| **API Fallback** | Open Food Facts API down → show notice, allow manual entry; Gemini API timeout (>15s) → show error message, app does not crash |
 
 ### Validation Constraints
 

@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gymtrack_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gymtrack
+      POSTGRES_PASSWORD: gymtrack_password
+      POSTGRES_DB: gymtrack
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gymtrack -d gymtrack"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

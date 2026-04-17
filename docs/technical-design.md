@@ -1,8 +1,8 @@
 # GymTrack — Technical Design
 ## Tech Stack, Architecture & Module Structure
 
-> **Version**: 1.0
-> **Date**: 2026-03-28
+> **Version**: 1.1
+> **Date**: 2026-04-17
 > **Status**: Approved
 
 ---
@@ -20,12 +20,14 @@
 | **Auth** | JWT (access 15min + refresh 7 days) + bcrypt | Stateless, self-implemented for full control; bcrypt for password hashing |
 | **Database** | PostgreSQL | Relational, excellent support for analytics queries (progress charts, volume tracking) |
 | **ORM** | Prisma | Type-safe queries, auto-generated types from schema, easy migration management |
-| **AI** | Gemini API (Google AI) | Analyze workout/nutrition data, personalized advice, context-aware conversations; model `gemini-2.0-flash`, free tier 1,500 req/day |
+| **AI** | Groq API + Meta Llama 4 Scout | Analyze workout/nutrition data, personalized advice, context-aware conversations; model `meta-llama/llama-4-scout-17b-16e-instruct`, free tier available |
 | **Email** | Brevo (Sendinblue) | Send password reset & iOS reminder fallback emails; free tier 300 emails/day (9,000/month) |
 | **Food API** | Open Food Facts API | Free, open-source nutrition database with 3M+ products |
 | **Notifications** | Web Push API + node-cron | Web Push for desktop/Android; node-cron schedules minute-by-minute schedule checks |
 | **File Storage** | ImageKit | Upload & optimize progress photos; free tier 20GB bandwidth/month + 3GB storage |
-| **Deployment** | Vercel (FE) + Render (BE) + Neon (DB) | Vercel optimized for Next.js (hobby plan free); Render free tier for Node.js; Neon serverless PostgreSQL free tier |
+| **Database (local dev)** | Docker + PostgreSQL 16 Alpine | `docker-compose.yml` chạy PostgreSQL tại `localhost:5433`; dữ liệu persist qua volume `postgres_data` |
+| **Database (production)** | Neon (serverless PostgreSQL) | Khi deploy lên Render/Vercel thì đổi `DATABASE_URL` sang Neon connection string |
+| **Deployment** | Vercel (FE) + Render (BE) | Vercel optimized for Next.js (hobby plan free); Render free tier for Node.js |
 | **Monitoring** | Better Stack (could-have) | Track runtime errors FE + BE in production; free tier 100,000 errors/month |
 
 ---
@@ -81,7 +83,7 @@ Backend calls external services (not the DB):
 
 2. **Access token expired (15min):** FE automatically calls `POST /api/auth/refresh` with `refresh_token` cookie (httpOnly) → BE validates → returns new `access_token` → FE retries original request
 
-3. **AI request:** FE calls `POST /api/ai/chat` → BE aggregates context (user's workout history, measurements, nutrition) → calls Gemini API → streams response back to FE
+3. **AI request:** FE calls `POST /api/ai/conversations/:id/messages` → BE aggregates context (user's workout history, measurements, nutrition) → calls Groq API (Llama 4 Scout) → returns response to FE
 
 4. **Cron job reminder:** node-cron runs every minute in BE process → queries `scheduled_workouts` due soon → sends Web Push (Android/Desktop) or email via Brevo (iOS fallback)
 
@@ -104,117 +106,119 @@ gymtrack/
 │   ├── technical-design.md
 │   ├── api-endpoints.md
 │   ├── database-schema.md
-│   └── implementation-workflow.md
-├── docker-compose.yml                    # Local dev: PostgreSQL + BE
+│   ├── database-design.md
+│   ├── implementation-workflow.md
+│   └── AI_LAYER_ARCHITECTURE.md
+├── docker-compose.yml                    # Local dev: PostgreSQL
 │
 ├── frontend/                             # Next.js 15 App
-│   ├── public/
-│   │   ├── icons/                        # PWA icons
-│   │   └── manifest.json                 # Web App Manifest (Web Push)
 │   ├── src/
 │   │   ├── app/
 │   │   │   ├── (auth)/                   # Public routes (no login required)
 │   │   │   │   ├── login/
 │   │   │   │   ├── register/
-│   │   │   │   ├── forgot-password/      # Enter email for reset link
-│   │   │   │   └── onboarding/           # Multi-step setup after registration
-│   │   │   ├── (dashboard)/              # Protected routes (login required)
-│   │   │   │   ├── page.tsx              # Dashboard home
+│   │   │   │   ├── forgot-password/
+│   │   │   │   ├── reset-password/
+│   │   │   │   └── google/callback/      # Google OAuth callback handler
+│   │   │   ├── (onboarding)/             # Multi-step setup after first registration
+│   │   │   │   └── onboarding/
+│   │   │   ├── (app)/                    # Protected routes (login required)
+│   │   │   │   ├── dashboard/            # Dashboard home
 │   │   │   │   ├── schedule/             # Calendar & workout schedule
-│   │   │   │   ├── workout/
-│   │   │   │   │   ├── page.tsx          # Workout History (list)
-│   │   │   │   │   ├── session/
-│   │   │   │   │   │   └── page.tsx      # Live session logging (fullscreen)
-│   │   │   │   │   └── [sessionId]/
-│   │   │   │   │       └── page.tsx      # Session Detail (read-only)
-│   │   │   │   ├── plans/
-│   │   │   │   │   ├── page.tsx          # Plans list
-│   │   │   │   │   └── [planId]/
-│   │   │   │   │       └── page.tsx      # Plan Detail / Editor
-│   │   │   │   ├── exercises/
-│   │   │   │   │   ├── page.tsx          # Exercise Library
-│   │   │   │   │   └── [exerciseId]/
-│   │   │   │   │       └── page.tsx      # Exercise Detail
-│   │   │   │   ├── progress/             # Progress Dashboard + Body Measurements
-│   │   │   │   ├── nutrition/            # Nutrition Dashboard + Food Log
-│   │   │   │   ├── ai-coach/             # AI Coach Chat
-│   │   │   │   └── profile/              # Profile & Settings
-│   │   │   ├── error.tsx                 # Error boundary (500, network error)
-│   │   │   ├── not-found.tsx             # 404 page
+│   │   │   │   ├── workouts/
+│   │   │   │   │   ├── page.tsx          # Workout home (start session)
+│   │   │   │   │   ├── session/          # Live session logging (fullscreen)
+│   │   │   │   │   ├── history/          # Workout history list
+│   │   │   │   │   ├── history/[id]/     # Session detail (read-only)
+│   │   │   │   │   ├── exercises/        # Exercise library
+│   │   │   │   │   └── exercises/[id]/   # Exercise detail + PR history
+│   │   │   │   ├── plans/                # Workout plans list
+│   │   │   │   │   └── [id]/             # Plan detail / editor
+│   │   │   │   ├── progress/             # Progress charts dashboard
+│   │   │   │   │   └── measurements/     # Body measurements log
+│   │   │   │   ├── nutrition/            # Nutrition dashboard
+│   │   │   │   │   ├── log/              # Log a meal
+│   │   │   │   │   └── plan/             # Nutrition plan settings
+│   │   │   │   ├── ai-coach/             # AI Coach conversations list
+│   │   │   │   │   └── [id]/             # AI Coach chat
+│   │   │   │   └── profile/              # Profile & settings (untracked, local only)
 │   │   │   └── layout.tsx
 │   │   ├── components/
-│   │   │   ├── ui/                       # shadcn/ui base components
-│   │   │   ├── layout/                   # Sidebar, BottomNav, Header
-│   │   │   ├── workout/                  # WorkoutCard, SetLogger, RestTimer
-│   │   │   ├── nutrition/                # MacroBar, FoodSearch, MealCard
-│   │   │   ├── progress/                 # ProgressChart, BodyMetricCard
-│   │   │   └── ai/                       # ChatBubble, InsightCard
-│   │   ├── hooks/                        # Custom React hooks
-│   │   │   ├── useAuth.ts
-│   │   │   ├── useRestTimer.ts           # Rest timer logic
-│   │   │   └── useActiveSession.ts       # Manage live session
+│   │   │   └── layout/                   # Sidebar, BottomNav
+│   │   ├── hooks/
+│   │   │   └── usePageTitle.ts
 │   │   ├── lib/
 │   │   │   ├── api.ts                    # Axios instance + refresh token interceptor
-│   │   │   ├── auth.ts                   # Token helpers (get/set/clear)
-│   │   │   ├── utils.ts                  # cn(), formatDate(), calcMacro()...
-│   │   │   ├── constants.ts              # API_URL, default rest times, muscle groups
-│   │   │   └── queryKeys.ts              # React Query key factory
+│   │   │   ├── utils.ts                  # cn(), formatDate()...
+│   │   │   ├── constants.ts              # API_URL, muscle groups
+│   │   │   ├── queryKeys.ts              # React Query key factory
+│   │   │   └── i18n/                     # Internationalisation (vi + en)
 │   │   ├── stores/                       # Zustand stores (client state only)
 │   │   │   ├── authStore.ts              # User info, isAuthenticated
-│   │   │   ├── workoutStore.ts           # Active session state
+│   │   │   ├── workoutStore.ts           # Active session state (persisted)
 │   │   │   ├── nutritionStore.ts         # Daily food log state
 │   │   │   └── timerStore.ts             # Rest timer state
-│   │   └── types/                        # Shared TypeScript interfaces & types
+│   │   └── middleware.ts                 # Route protection (redirect if not logged in)
 │
 ├── backend/                              # Node.js + Express + TypeScript
 │   ├── src/
 │   │   ├── config/
 │   │   │   ├── env.ts                    # Zod schema for validating env variables
-│   │   │   └── database.ts               # Prisma client singleton
-│   │   ├── controllers/
-│   │   │   ├── authController.ts
-│   │   │   ├── workoutController.ts
-│   │   │   ├── planController.ts
-│   │   │   ├── exerciseController.ts
-│   │   │   ├── progressController.ts
-│   │   │   ├── nutritionController.ts
-│   │   │   └── aiController.ts
-│   │   ├── routes/
+│   │   │   ├── database.ts               # Prisma client singleton
+│   │   │   ├── passport.ts               # Google OAuth strategy (Passport.js)
+│   │   │   └── imagekit.ts               # ImageKit SDK config
+│   │   ├── routes/                       # Routes contain inline logic (no separate controllers)
 │   │   │   ├── auth.ts
 │   │   │   ├── workouts.ts
 │   │   │   ├── plans.ts
 │   │   │   ├── exercises.ts
+│   │   │   ├── schedule.ts
 │   │   │   ├── progress.ts
 │   │   │   ├── nutrition.ts
+│   │   │   ├── notifications.ts
 │   │   │   └── ai.ts
 │   │   ├── services/
-│   │   │   ├── aiService.ts              # Gemini API integration
-│   │   │   ├── nutritionService.ts       # Open Food Facts proxy + macro calculation
-│   │   │   ├── notificationService.ts    # Web Push API
-│   │   │   └── emailService.ts           # Brevo: reset password, reminders
+│   │   │   ├── ai.service.ts             # Groq API integration (Llama 4 Scout)
+│   │   │   ├── auth.service.ts           # Auth business logic
+│   │   │   ├── exercises.service.ts      # Exercise CRUD + image upload
+│   │   │   ├── workouts.service.ts       # Session + sets + PR tracking
+│   │   │   ├── plans.service.ts          # Workout plan CRUD
+│   │   │   ├── schedule.service.ts       # Scheduled workout CRUD
+│   │   │   ├── progress.service.ts       # Measurements + charts + records
+│   │   │   ├── nutrition.service.ts      # Food log + Open Food Facts proxy
+│   │   │   ├── notifications.service.ts  # Web Push API
+│   │   │   ├── email.service.ts          # Gmail SMTP / Brevo email
+│   │   │   └── imagekit.service.ts       # Photo upload to ImageKit
 │   │   ├── middleware/
 │   │   │   ├── auth.ts                   # JWT verify + attach user to req
 │   │   │   ├── validation.ts             # Zod request body/query validation
 │   │   │   └── errorHandler.ts           # Global error handler middleware
+│   │   ├── validators/                   # Zod schemas per module
+│   │   │   ├── auth.validators.ts
+│   │   │   ├── workouts.validators.ts
+│   │   │   ├── exercises.validators.ts
+│   │   │   ├── plans.validators.ts
+│   │   │   ├── schedule.validators.ts
+│   │   │   ├── progress.validators.ts
+│   │   │   └── nutrition.validators.ts
 │   │   ├── utils/
-│   │   │   ├── response.ts               # ApiResponse formatter {success, data, error}
+│   │   │   ├── response.ts               # sendSuccess() / sendError() helpers
 │   │   │   ├── jwt.ts                    # signToken(), verifyToken()
 │   │   │   └── password.ts               # hashPassword(), comparePassword()
 │   │   ├── types/
-│   │   │   ├── index.ts                  # UserPayload, JwtPayload, ApiResponse<T>
+│   │   │   ├── index.ts                  # UserPayload, ApiResponse<T>
 │   │   │   └── express.d.ts              # Extend Express Request with req.user
 │   │   ├── jobs/
-│   │   │   └── reminderJob.ts            # node-cron: check & send workout reminders
-│   │   └── app.ts
+│   │   │   └── reminders.ts              # Workout reminder handler (Web Push + email)
+│   │   └── app.ts                        # Express app setup + route mounting
 │   ├── prisma/
-│   │   ├── schema.prisma
-│   │   └── seed.ts                       # Seed 100+ exercises into DB
-│   └── __tests__/                        # Test directory
-│       ├── auth.test.ts
-│       └── workout.test.ts
+│   │   ├── schema.prisma                 # 20 models, PostgreSQL
+│   │   ├── seed.ts                       # Seed 100+ exercises into DB
+│   │   └── migrations/                   # Prisma migration history
+│   └── __tests__/                        # Test directory (in progress)
 ```
 
 ---
 
-*Document version: 1.0 — 2026-03-28*
+*Document version: 1.1 — 2026-04-17*
 *Status: Approved*

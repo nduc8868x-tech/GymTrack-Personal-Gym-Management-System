@@ -1,7 +1,7 @@
 # GymTrack — REST API Endpoints
 
-> **Version**: 1.0
-> **Date**: 2026-03-28
+> **Version**: 1.1
+> **Date**: 2026-04-17
 > **Status**: Approved
 
 ---
@@ -60,11 +60,14 @@ PUT  /api/auth/profile        → { "name": "string", "height_cm": 175, "gender"
 | POST | `/api/exercises` | — | Create a custom exercise |
 | GET | `/api/exercises/:id` | — | Details of one exercise + PR history |
 | DELETE | `/api/exercises/:id` | — | Delete a custom exercise (soft delete) |
+| POST | `/api/exercises/:id/image` | — | Upload exercise image (multipart/form-data) |
+| DELETE | `/api/exercises/:id/image` | — | Remove exercise image |
 
 **Key Request Bodies — EXERCISES:**
 
 ```json
 POST /api/exercises → { "name": "string", "primary_muscle": "chest", "equipment": "barbell", "description": "string?" }
+POST /api/exercises/:id/image → FormData: field "image" (file)
 ```
 
 ---
@@ -130,37 +133,19 @@ PUT /api/workouts/sessions/:id → { "ended_at": "ISO8601", "notes": "string?" }
 
 | Method | Endpoint | Query Params | Description |
 |--------|----------|-------------|-------------|
-| GET | `/api/schedule` | `from`, `to` | Workout schedule by date range (includes `scheduled_exercises` with nested exercise) |
-| GET | `/api/schedule/today` | `date?` | Today's scheduled workouts with exercises — used by the Workout page |
+| GET | `/api/schedule` | `from`, `to` | Workout schedule by date range |
 | POST | `/api/schedule` | — | Create a new scheduled workout |
 | PUT | `/api/schedule/:id` | — | Update schedule (change time, date, completion status) |
-| DELETE | `/api/schedule/:id` | — | Cancel / delete scheduled workout (cascades to scheduled exercises) |
-| POST | `/api/schedule/:id/exercises` | — | Add an exercise to a scheduled workout |
-| PUT | `/api/schedule/:id/exercises/:exerciseEntryId` | — | Update a scheduled exercise (sets / reps / weight) |
-| DELETE | `/api/schedule/:id/exercises/:exerciseEntryId` | — | Remove an exercise from a scheduled workout |
+| DELETE | `/api/schedule/:id` | — | Cancel / delete scheduled workout |
 
 **Key Request Bodies — SCHEDULE:**
 
 ```json
 POST /api/schedule → { "plan_day_id": "uuid?", "name": "string", "scheduled_date": "YYYY-MM-DD", "scheduled_time": "HH:MM" }
-
-POST /api/schedule/:id/exercises → {
-  "exercise_id": "uuid",
-  "sets": 3,
-  "reps": 10,
-  "weight_kg": 60.0,
-  "order_index": 0,
-  "notes": "string?"
-}
-
-PUT /api/schedule/:id/exercises/:exerciseEntryId → {
-  "sets": 4,
-  "reps": 8,
-  "weight_kg": 65.0
-}
+PUT  /api/schedule/:id → { "name": "string?", "scheduled_date": "YYYY-MM-DD?", "scheduled_time": "HH:MM?", "is_completed": true }
 ```
 
-**GET /api/schedule Response Shape (updated):**
+**GET /api/schedule Response Shape:**
 
 ```json
 {
@@ -173,24 +158,7 @@ PUT /api/schedule/:id/exercises/:exerciseEntryId → {
       "scheduled_time": "1970-01-01T18:00:00.000Z",
       "is_completed": false,
       "plan": null,
-      "plan_day": null,
-      "scheduled_exercises": [
-        {
-          "id": "uuid",
-          "exercise_id": "uuid",
-          "sets": 4,
-          "reps": 10,
-          "weight_kg": 80.0,
-          "order_index": 0,
-          "notes": null,
-          "exercise": {
-            "id": "uuid",
-            "name": "Bench Press",
-            "primary_muscle": "chest",
-            "equipment": "barbell"
-          }
-        }
-      ]
+      "plan_day": null
     }
   ]
 }
@@ -206,6 +174,7 @@ PUT /api/schedule/:id/exercises/:exerciseEntryId → {
 | POST | `/api/progress/measurements` | — | Log new measurements (weight, body data, photo) |
 | GET | `/api/progress/charts` | `type`, `from`, `to` | Chart data (`type`: weight/volume/strength) |
 | GET | `/api/progress/records` | — | All Personal Records per exercise |
+| GET | `/api/progress/imagekit-auth` | — | ImageKit auth signature for direct FE upload |
 
 **Key Request Bodies — PROGRESS:**
 
@@ -285,5 +254,15 @@ POST /api/ai/conversations/:id/messages → { "content": "string" }
 
 ---
 
-*Document version: 1.0 — 2026-03-28*
+---
+
+## PROGRESS (thêm)
+
+| Method | Endpoint          | Query Params | Description                                                      |
+|--------|-------------------|-------------|------------------------------------------------------------------|
+| GET    | `/api/progress/imagekit-auth` | —  | Lấy auth signature để upload ảnh trực tiếp lên ImageKit từ FE  |
+
+---
+
+*Document version: 1.1 — 2026-04-17*
 *Status: Approved*

@@ -110,7 +110,7 @@ export default function WorkoutsPage() {
           </svg>
           <input
             type="text"
-            placeholder="Search exercises..."
+            placeholder="Tìm kiếm bài tập..."
             className="w-full rounded-xl bg-white/5 border border-white/10 pl-9 pr-4 py-2 text-xs text-slate-400 placeholder:text-slate-600 outline-none focus:border-blue-500/40 focus:ring-1 focus:ring-blue-500/20 transition-all"
           />
         </div>
@@ -136,7 +136,7 @@ export default function WorkoutsPage() {
         {/* ── Heading ─────────────────────────────────────────────── */}
         <div>
           <h1 className="text-5xl font-black text-white tracking-tight leading-none mb-2">
-            Train Ready
+            Sẵn Sàng Tập
           </h1>
           <p className="text-slate-500 text-sm capitalize">
             {dateLabel}
@@ -169,8 +169,8 @@ export default function WorkoutsPage() {
                 </svg>
               </div>
               <div>
-                <h2 className="text-lg font-bold text-white">New Session</h2>
-                <p className="text-sm text-slate-500 mt-0.5">Track your intensity and volume in real-time</p>
+                <h2 className="text-lg font-bold text-white">Buổi Tập Mới</h2>
+                <p className="text-sm text-slate-500 mt-0.5">Theo dõi cường độ và khối lượng tập theo thời gian thực</p>
               </div>
             </div>
 
@@ -178,7 +178,7 @@ export default function WorkoutsPage() {
               <>
                 <div className="mb-6">
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2">
-                    Workout Name
+                    Tên Buổi Tập
                   </label>
                   <div className="relative">
                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600">
@@ -188,7 +188,7 @@ export default function WorkoutsPage() {
                     </div>
                     <input
                       type="text"
-                      placeholder="e.g. Heavy Push Day A"
+                      placeholder="vd. Ngày Đẩy Nặng A"
                       value={sessionName}
                       onChange={(e) => setSessionName(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && !starting && handleStartSession()}
@@ -222,9 +222,9 @@ export default function WorkoutsPage() {
                         <path d="M8 5v14l11-7z" />
                       </svg>
                     )}
-                    {starting ? t.common.loading : 'START WORKOUT'}
+                    {starting ? t.common.loading : 'BẮT ĐẦU TẬP'}
                   </button>
-                  <p className="text-xs text-slate-600 italic">Estimated duration: 75 mins</p>
+                  <p className="text-xs text-slate-600 italic">Ước tính: 75 phút</p>
                 </div>
               </>
             )}
@@ -261,8 +261,8 @@ export default function WorkoutsPage() {
                 </svg>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-white">Workout History</p>
-                <p className="text-xs text-slate-500 mt-0.5">View past performance</p>
+                <p className="text-sm font-bold text-white">Lịch Sử Tập</p>
+                <p className="text-xs text-slate-500 mt-0.5">Xem hiệu suất buổi trước</p>
               </div>
               <svg className="w-4 h-4 text-slate-600 group-hover:text-slate-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -283,8 +283,8 @@ export default function WorkoutsPage() {
                 </svg>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-white">Workout Library</p>
-                <p className="text-xs text-slate-500 mt-0.5">Browse routine templates</p>
+                <p className="text-sm font-bold text-white">Thư Viện Bài Tập</p>
+                <p className="text-xs text-slate-500 mt-0.5">Duyệt các mẫu chương trình tập</p>
               </div>
               <svg className="w-4 h-4 text-slate-600 group-hover:text-slate-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -299,12 +299,12 @@ export default function WorkoutsPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                   </svg>
                 </div>
-                <p className="text-sm font-bold text-white">Weekly Streak</p>
+                <p className="text-sm font-bold text-white">Chuỗi Tuần</p>
               </div>
               <p className="text-xs text-slate-400 leading-relaxed mb-3">
                 {streak > 0
-                  ? `You've hit ${streak} days in a row. Keep the kinetic energy moving.`
-                  : 'Start your streak today. Consistency is key.'}
+                  ? `Bạn đã tập ${streak} ngày liên tiếp. Hãy tiếp tục đà đó!`
+                  : 'Bắt đầu chuỗi tập hôm nay. Kiên trì là chìa khóa.'}
               </p>
               {/* Progress dots (7 days of week) */}
               <div className="flex gap-1.5">
@@ -325,12 +325,12 @@ export default function WorkoutsPage() {
         {/* ── Recent Performance ──────────────────────────────────── */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-bold text-white">Recent Performance</h2>
+            <h2 className="text-sm font-bold text-white">Hiệu Suất Gần Đây</h2>
             <Link
               href="/workouts/history"
               className="text-xs font-semibold text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
             >
-              SEE ALL
+              XEM TẤT CẢ
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
               </svg>
@@ -389,8 +389,8 @@ export default function WorkoutsPage() {
                         </div>
                       )}
                       <div className="ml-auto self-end">
-                        <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">STATUS</p>
-                        <p className="text-xs font-bold text-emerald-400 mt-0.5">DONE</p>
+                        <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">TRẠNG THÁI</p>
+                        <p className="text-xs font-bold text-emerald-400 mt-0.5">XONG</p>
                       </div>
                     </div>
                   </Link>

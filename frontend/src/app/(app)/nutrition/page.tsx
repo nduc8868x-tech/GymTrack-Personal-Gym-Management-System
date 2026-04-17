@@ -39,9 +39,9 @@ const MEAL_CONFIG: Record<FoodLog['meal_type'], { icon: string; color: string }>
 };
 
 const PRO_TIPS = [
-  { title: 'Pre-workout Hydration', body: 'Drink 500ml of water 2 hours before training to maintain peak muscular endurance.' },
-  { title: 'Protein Timing', body: 'Consume 20-40g of protein within 30 minutes post-workout to maximise muscle protein synthesis.' },
-  { title: 'Carb Loading', body: 'Increase carbohydrate intake the day before high-intensity sessions for better energy availability.' },
+  { title: 'Uống Nước Trước Tập', body: 'Uống 500ml nước 2 tiếng trước khi tập để duy trì sức bền cơ bắp tối đa.' },
+  { title: 'Thời Điểm Nạp Protein', body: 'Nạp 20-40g protein trong vòng 30 phút sau khi tập để tối ưu tổng hợp cơ.' },
+  { title: 'Nạp Carb Trước Buổi Nặng', body: 'Tăng lượng carbohydrate hôm trước các buổi cường độ cao để có thêm năng lượng.' },
 ];
 
 function fmt(d: Date) { return d.toISOString().split('T')[0]; }
@@ -49,8 +49,8 @@ function fmt(d: Date) { return d.toISOString().split('T')[0]; }
 function displayDate(dateStr: string) {
   const today = fmt(new Date());
   const yesterday = fmt(new Date(Date.now() - 86400000));
-  if (dateStr === today) return 'Today';
-  if (dateStr === yesterday) return 'Yesterday';
+  if (dateStr === today) return 'Hôm nay';
+  if (dateStr === yesterday) return 'Hôm qua';
   return new Date(dateStr).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' });
 }
 
@@ -143,9 +143,9 @@ export default function NutritionPage() {
           <span className="text-blue-400 font-bold text-base tracking-tight">GymTrack</span>
           <nav className="hidden md:flex items-center gap-5">
             {[
-              { label: 'Workout', href: '/workouts' },
-              { label: 'Nutrition', href: '/nutrition', active: true },
-              { label: 'Community', href: '#' },
+              { label: 'Tập Luyện', href: '/workouts' },
+              { label: 'Dinh Dưỡng', href: '/nutrition', active: true },
+              { label: 'Cộng Đồng', href: '#' },
             ].map(({ label, href, active }) => (
               <Link
                 key={label}
@@ -239,8 +239,8 @@ export default function NutritionPage() {
                   <div className="grid grid-cols-3 gap-2">
                     {[
                       { label: 'PROTEIN', value: Math.round(totals.protein), goal: plan.protein_g, color: '#3b82f6' },
-                      { label: 'CARBS',   value: Math.round(totals.carbs),   goal: plan.carbs_g,   color: '#f59e0b' },
-                      { label: 'FAT',     value: Math.round(totals.fat),     goal: plan.fat_g,     color: '#ef4444' },
+                      { label: 'TINH BỘT', value: Math.round(totals.carbs),   goal: plan.carbs_g,   color: '#f59e0b' },
+                      { label: 'CHẤT BÉO', value: Math.round(totals.fat),     goal: plan.fat_g,     color: '#ef4444' },
                     ].map(({ label, value, goal, color }) => (
                       <div key={label} className="rounded-xl bg-white/5 border border-white/8 px-3 py-2 text-center">
                         <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">{label}</p>
@@ -253,15 +253,15 @@ export default function NutritionPage() {
               ) : (
                 <div>
                   <p className="text-4xl font-black text-white mb-1">0 <span className="text-xl font-normal text-slate-400">kcal</span></p>
-                  <p className="text-sm text-slate-400 mb-4">Fuel your performance. Start by setting your daily intake goal.</p>
+                  <p className="text-sm text-slate-400 mb-4">Tiếp thêm năng lượng. Bắt đầu bằng cách đặt mục tiêu calo hàng ngày.</p>
                   <Link
                     href="/nutrition/plan"
                     className="inline-flex items-center gap-2 rounded-xl bg-blue-500 hover:bg-blue-400 px-5 py-2.5 text-sm font-bold text-white transition-colors"
                   >
-                    Set up a nutrition plan
+                    Thiết lập kế hoạch dinh dưỡng
                   </Link>
                   <div className="grid grid-cols-3 gap-2 mt-4">
-                    {['PROTEIN', 'CARBS', 'FAT'].map((label) => (
+                    {['PROTEIN', 'TINH BỘT', 'CHẤT BÉO'].map((label) => (
                       <div key={label} className="rounded-xl bg-white/5 border border-white/8 px-3 py-2.5 text-center">
                         <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">{label}</p>
                         <p className="text-sm font-black text-slate-400">0g</p>
@@ -284,7 +284,7 @@ export default function NutritionPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
           </div>
-          + Add food
+          + Thêm thực phẩm
         </Link>
 
         {/* ── Meal cards 2×2 grid ──────────────────────────────── */}
@@ -318,7 +318,7 @@ export default function NutritionPage() {
                   {/* Meal entries */}
                   <div className="px-4 py-3 min-h-[56px]">
                     {entries.length === 0 ? (
-                      <p className="text-xs text-slate-600 italic">Nothing logged yet</p>
+                      <p className="text-xs text-slate-600 italic">Chưa ghi gì cả</p>
                     ) : (
                       <div className="space-y-2">
                         {entries.map((log) => (
@@ -354,7 +354,7 @@ export default function NutritionPage() {
             🥗
           </div>
           <div>
-            <p className="text-xs font-bold text-blue-400 mb-0.5">Pro Tip: {tip.title}</p>
+            <p className="text-xs font-bold text-blue-400 mb-0.5">Mẹo Hay: {tip.title}</p>
             <p className="text-xs text-slate-400 leading-relaxed">{tip.body}</p>
           </div>
         </div>
@@ -369,7 +369,7 @@ export default function NutritionPage() {
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
           </svg>
-          Log Quick Meal
+          Ghi Nhanh Bữa Ăn
         </Link>
       </div>
     </div>

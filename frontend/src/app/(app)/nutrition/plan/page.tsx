@@ -137,7 +137,7 @@ export default function NutritionPlanPage() {
           <div className="rounded-lg border border-border bg-card p-5 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-semibold">{plan.name ?? 'My Plan'}</p>
+                <p className="font-semibold">{plan.name ?? 'Kế Hoạch Của Tôi'}</p>
                 {plan.start_date && (
                   <p className="text-xs text-muted-foreground">
                     {t.nutrition.planPage.since.replace('{date}', new Date(plan.start_date).toLocaleDateString())}

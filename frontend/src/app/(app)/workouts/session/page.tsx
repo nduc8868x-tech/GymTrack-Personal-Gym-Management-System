@@ -339,12 +339,12 @@ export default function WorkoutSessionPage() {
           <div className="w-full md:max-w-sm bg-card rounded-t-2xl md:rounded-2xl p-5 space-y-4">
             <h3 className="font-semibold text-lg">{t.workouts.session.confirmEnd}</h3>
             <p className="text-sm text-muted-foreground">
-              {activeSession.sets.length} sets logged. Add a note (optional):
+              {activeSession.sets.length} set đã ghi. Thêm ghi chú (tuỳ chọn):
             </p>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="How did it go?"
+              placeholder="Buổi tập diễn ra như thế nào?"
               rows={3}
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring resize-none"
             />
@@ -371,7 +371,7 @@ export default function WorkoutSessionPage() {
         {/* Log a set form */}
         <div className="px-4 py-4 border-b border-border space-y-3">
           <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Log Set
+            Ghi Set
           </h2>
 
           {/* Exercise picker button */}
@@ -380,7 +380,7 @@ export default function WorkoutSessionPage() {
             className="w-full flex items-center justify-between rounded-md border border-input bg-background px-3 py-2.5 text-sm hover:bg-accent transition-colors"
           >
             <span className={selectedExercise ? 'font-medium' : 'text-muted-foreground'}>
-              {selectedExercise ? selectedExercise.name : 'Select exercise…'}
+              {selectedExercise ? selectedExercise.name : 'Chọn bài tập…'}
             </span>
             <ChevronDown className="h-4 w-4 text-muted-foreground" />
           </button>
@@ -392,7 +392,7 @@ export default function WorkoutSessionPage() {
                 <input
                   type="number"
                   inputMode="numeric"
-                  placeholder="Duration (s)"
+                  placeholder="Thời gian (giây)"
                   value={duration}
                   onChange={(e) => setDuration(e.target.value)}
                   className="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
@@ -401,7 +401,7 @@ export default function WorkoutSessionPage() {
                 <input
                   type="number"
                   inputMode="numeric"
-                  placeholder="Reps"
+                  placeholder="Số reps"
                   value={reps}
                   onChange={(e) => setReps(e.target.value)}
                   className="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
@@ -410,7 +410,7 @@ export default function WorkoutSessionPage() {
               <input
                 type="number"
                 inputMode="decimal"
-                placeholder="Weight (kg)"
+                placeholder="Tạ (kg)"
                 value={weight}
                 onChange={(e) => setWeight(e.target.value)}
                 className="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
@@ -427,7 +427,7 @@ export default function WorkoutSessionPage() {
             }
             className="w-full rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
           >
-            {logging ? 'Logging…' : `Log Set${selectedExercise ? ` (Set ${getSetCount(selectedExercise.id)})` : ''}`}
+            {logging ? 'Đang ghi…' : `Ghi Set${selectedExercise ? ` (Set ${getSetCount(selectedExercise.id)})` : ''}`}
           </button>
         </div>
 
@@ -435,7 +435,7 @@ export default function WorkoutSessionPage() {
         <div className="px-4 py-4 space-y-4">
           {Object.keys(groupedSets).length === 0 ? (
             <div className="py-8 text-center text-muted-foreground text-sm">
-              No sets logged yet — select an exercise above to start
+              Chưa có set nào — chọn bài tập ở trên để bắt đầu
             </div>
           ) : (
             Object.entries(groupedSets).map(([exerciseId, sets]) => (

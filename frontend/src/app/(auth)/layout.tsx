@@ -37,7 +37,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             <div className="mb-6">
               <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-600/10 border border-blue-600/20 text-blue-400 text-xs font-semibold uppercase tracking-widest mb-6">
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-                AI Performance Platform
+                Nền tảng luyện tập AI
               </span>
             </div>
             <h1 className="text-5xl xl:text-6xl font-black text-white leading-[1.05] tracking-tight mb-6">

@@ -135,7 +135,7 @@ function ActivityCard({ session }: { session: Session }) {
       {/* Content */}
       <div className="relative p-4 pt-12">
         <h3 className="font-bold text-white text-sm leading-tight mb-1">
-          {session.name ?? 'Workout Session'}
+          {session.name ?? 'Buổi Tập'}
         </h3>
         <div className="flex items-center gap-2 text-xs text-slate-400">
           <span>{duration}</span>
@@ -244,7 +244,7 @@ export default function DashboardPage() {
             </svg>
             <input
               type="text"
-              placeholder="Search metrics..."
+              placeholder="Tìm kiếm chỉ số..."
               className="w-full rounded-xl bg-white/5 border border-white/8 pl-9 pr-4 py-2 text-xs text-slate-400 placeholder:text-slate-600 outline-none focus:border-blue-500/40 focus:ring-1 focus:ring-blue-500/20 transition-all"
             />
           </div>
@@ -326,7 +326,7 @@ export default function DashboardPage() {
           <StatCard
             label={t.dashboard.stats.streak}
             value={streak}
-            sub={streak > 0 ? 'Personal Record 🔥' : 'Bắt đầu chuỗi hôm nay'}
+            sub={streak > 0 ? 'Kỷ lục cá nhân 🔥' : 'Bắt đầu chuỗi hôm nay'}
             subColor={streak > 0 ? 'text-orange-400' : 'text-slate-500'}
             icon={
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -456,7 +456,7 @@ export default function DashboardPage() {
         {/* ── Recent Activities ───────────────────────────────────── */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold text-white">Recent Activities</h2>
+            <h2 className="text-sm font-bold text-white">Hoạt Động Gần Đây</h2>
             <Link href="/workouts/history" className="text-xs text-slate-500 hover:text-blue-400 transition-colors font-medium">
               Tất cả →
             </Link>

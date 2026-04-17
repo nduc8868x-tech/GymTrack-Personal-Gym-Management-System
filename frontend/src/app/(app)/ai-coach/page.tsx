@@ -242,7 +242,7 @@ export default function AiCoachPage() {
                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                     </svg>
-                    +12% EFFICIENCY
+                    +12% HIỆU QUẢ
                   </span>
                 )}
               </div>
@@ -281,7 +281,7 @@ export default function AiCoachPage() {
                         <>
                           {' '}
                           <Link href="/workouts/exercises" className="text-blue-400 hover:text-blue-300 font-medium transition-colors">
-                            {insights?.metrics?.most_trained_muscle ?? 'Bench Press'}
+                            {insights?.metrics?.most_trained_muscle ?? 'Bài tập chính'}
                           </Link>{' '}
                           {summaryLines[1].toLowerCase()}.
                         </>
@@ -294,7 +294,7 @@ export default function AiCoachPage() {
 
                 {/* Tags */}
                 <div className="flex gap-2 flex-wrap">
-                  {['Strength Training', 'Recovery Focus'].map((tag) => (
+                  {['Tập Sức Mạnh', 'Phục Hồi'].map((tag) => (
                     <span key={tag} className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-xs font-medium text-slate-400">
                       {tag}
                     </span>
@@ -307,7 +307,7 @@ export default function AiCoachPage() {
           {/* Recovery Status card */}
           <div className="rounded-2xl bg-white/4 border border-white/8 p-5 flex flex-col">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Recovery Status</p>
+              <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Trạng Thái Phục Hồi</p>
               <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
@@ -336,9 +336,9 @@ export default function AiCoachPage() {
         {/* ── Recent Conversations ─────────────────────────────── */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-bold text-white">Recent Conversations</h2>
+            <h2 className="text-sm font-bold text-white">Cuộc Trò Chuyện Gần Đây</h2>
             <button className="text-xs font-semibold text-blue-400 hover:text-blue-300 transition-colors">
-              View All
+              Xem Tất Cả
             </button>
           </div>
 
@@ -374,7 +374,7 @@ export default function AiCoachPage() {
                           <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                         </svg>
                         <span className="text-xs text-slate-500">
-                          {conv._count.messages} messages
+                          {conv._count.messages} tin nhắn
                         </span>
                         <span className="text-white/10">•</span>
                         <span className="text-xs text-slate-500">

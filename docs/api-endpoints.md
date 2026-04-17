@@ -115,7 +115,7 @@ POST /api/plans/:id/days/:dayId/exercises → {
 **Key Request Bodies — WORKOUT SESSIONS:**
 
 ```json
-POST /api/workouts/sessions → { "name": "string?", "plan_day_id": "uuid?", "started_at": "ISO8601" }
+POST /api/workouts/sessions → { "name": "string?", "plan_day_id": "uuid?", "scheduled_id": "uuid?", "started_at": "ISO8601" }
 POST /api/workouts/sessions/:id/sets → {
   "exercise_id": "uuid", "set_number": 1, "reps": 10,
   "weight_kg": 80.0, "duration_seconds": null
@@ -130,15 +130,70 @@ PUT /api/workouts/sessions/:id → { "ended_at": "ISO8601", "notes": "string?" }
 
 | Method | Endpoint | Query Params | Description |
 |--------|----------|-------------|-------------|
-| GET | `/api/schedule` | `from`, `to` | Workout schedule by date range |
+| GET | `/api/schedule` | `from`, `to` | Workout schedule by date range (includes `scheduled_exercises` with nested exercise) |
+| GET | `/api/schedule/today` | `date?` | Today's scheduled workouts with exercises — used by the Workout page |
 | POST | `/api/schedule` | — | Create a new scheduled workout |
-| PUT | `/api/schedule/:id` | — | Update schedule (change time, date) |
-| DELETE | `/api/schedule/:id` | — | Cancel / delete scheduled workout |
+| PUT | `/api/schedule/:id` | — | Update schedule (change time, date, completion status) |
+| DELETE | `/api/schedule/:id` | — | Cancel / delete scheduled workout (cascades to scheduled exercises) |
+| POST | `/api/schedule/:id/exercises` | — | Add an exercise to a scheduled workout |
+| PUT | `/api/schedule/:id/exercises/:exerciseEntryId` | — | Update a scheduled exercise (sets / reps / weight) |
+| DELETE | `/api/schedule/:id/exercises/:exerciseEntryId` | — | Remove an exercise from a scheduled workout |
 
 **Key Request Bodies — SCHEDULE:**
 
 ```json
 POST /api/schedule → { "plan_day_id": "uuid?", "name": "string", "scheduled_date": "YYYY-MM-DD", "scheduled_time": "HH:MM" }
+
+POST /api/schedule/:id/exercises → {
+  "exercise_id": "uuid",
+  "sets": 3,
+  "reps": 10,
+  "weight_kg": 60.0,
+  "order_index": 0,
+  "notes": "string?"
+}
+
+PUT /api/schedule/:id/exercises/:exerciseEntryId → {
+  "sets": 4,
+  "reps": 8,
+  "weight_kg": 65.0
+}
+```
+
+**GET /api/schedule Response Shape (updated):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "uuid",
+      "name": "Ngày Ngực",
+      "scheduled_date": "2026-04-17T00:00:00.000Z",
+      "scheduled_time": "1970-01-01T18:00:00.000Z",
+      "is_completed": false,
+      "plan": null,
+      "plan_day": null,
+      "scheduled_exercises": [
+        {
+          "id": "uuid",
+          "exercise_id": "uuid",
+          "sets": 4,
+          "reps": 10,
+          "weight_kg": 80.0,
+          "order_index": 0,
+          "notes": null,
+          "exercise": {
+            "id": "uuid",
+            "name": "Bench Press",
+            "primary_muscle": "chest",
+            "equipment": "barbell"
+          }
+        }
+      ]
+    }
+  ]
+}
 ```
 
 ---

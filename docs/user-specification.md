@@ -108,13 +108,24 @@ Dashboard
 WORKOUT FLOW
 ────────────
 Calendar / Schedule
-  ├── [Select scheduled session]  → Workout Session (live)
-  └── [+ Create schedule]         → Modal: select date, time, plan day → save
+  ├── [Select scheduled session]       → Workout Detail Modal
+  │     ├── [Mark complete]            → update is_completed flag
+  │     ├── [+ Thêm bài tập]           → Exercise Picker → confirm sets/reps/weight → add to schedule
+  │     ├── [Edit exercise entry]      → inline edit sets/reps/weight
+  │     ├── [Delete exercise entry]    → remove from scheduled_exercises
+  │     └── [Delete scheduled workout] → delete with cascade
+  └── [+ Create schedule]              → Modal: select date, time, plan day → save
+
+Workout Page (today)
+  ├── [KẾ HOẠCH HÔM NAY — BẮT ĐẦU]  → start session linked to today's schedule
+  │     └── → Workout Session (live) with plan reference panel
+  └── [New Session (manual)]           → Workout Session (live) without plan panel
 
 Workout Session (live)
-  ├── [+ Add exercise]  → Exercise Library → [Select] → return to Session
-  ├── [Tap exercise]    → expand set logger (inline, no screen exit)
-  └── [Complete]        → Workout Session Detail (summary of just-completed session)
+  ├── [KẾ HOẠCH HÔM NAY panel]        → tap row → auto-fill exercise + weight + reps in log form
+  ├── [+ Add exercise]                 → Exercise Library → [Select] → return to Session
+  ├── [Tap exercise]                   → expand set logger (inline, no screen exit)
+  └── [Complete]                       → Workout Session Detail (summary of just-completed session)
 
 Workout History
   └── [Tap session]     → Workout Session Detail (read-only)

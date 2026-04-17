@@ -63,6 +63,9 @@
 - Assign plan day to schedule
 - View calendar in weekly/monthly format
 - Workout reminders via web push notification
+- **[NEW]** Add multiple exercises to a scheduled workout with target sets / reps / weight (kg)
+- **[NEW]** Edit or remove exercises from a scheduled workout at any time
+- **[NEW]** Exercise count badge displayed on each calendar card
 
 **Acceptance Criteria:**
 - ✅ Create schedule for any future date
@@ -70,6 +73,9 @@
 - ✅ Notification sent at the scheduled time (±1 minute)
 - ✅ Completed sessions displayed differently from upcoming ones (different color/icon)
 - ✅ Empty state: No schedule → display "Create your first workout" button
+- ✅ **[NEW]** Can add ≥1 exercise to a scheduled workout; each exercise stores sets (1–20), reps (1–100), weight_kg (optional)
+- ✅ **[NEW]** Exercises are ordered and displayed in `order_index` sequence inside the workout detail modal
+- ✅ **[NEW]** Deleting a scheduled workout cascades to delete all its scheduled exercises
 
 ---
 
@@ -84,6 +90,10 @@
 - Countdown timer for rest between sets
 - Notes for each session
 - View full workout history
+- **[NEW]** Workout page displays a "KẾ HOẠCH HÔM NAY" section showing exercises from today's scheduled workout
+- **[NEW]** Start a session directly from today's plan — session is pre-linked to the scheduled workout
+- **[NEW]** During an active session, a reference panel shows planned sets/reps/weight for each exercise and tracks real-time completion progress
+- **[NEW]** Tapping a planned exercise in the session panel auto-fills the exercise picker and pre-populates target weight & reps into the log form
 
 **Acceptance Criteria:**
 - ✅ Can log ≥1 exercise with ≥1 set in a session
@@ -92,6 +102,9 @@
 - ✅ End session → data saved to Workout History immediately
 - ✅ If weight × reps exceeds current PR → Personal Record automatically updated
 - ✅ Empty state: Empty history → display "Start your first workout"
+- ✅ **[NEW]** "KẾ HOẠCH HÔM NAY" section only appears when today has ≥1 scheduled workout with ≥1 exercise
+- ✅ **[NEW]** Starting from plan → session `scheduled_id` is set; plan exercises stored in Zustand and survive browser refresh
+- ✅ **[NEW]** Session started without a plan → no plan reference panel displayed (backward compatible)
 
 ---
 
@@ -233,6 +246,9 @@ Applied via Zod schema on both FE and BE:
 | `quantity_g` (food log) | 1 – 5000 g |
 | `body_fat_pct` | 1 – 60% |
 | `rest_seconds` | 10 – 600 seconds |
+| `scheduled_exercise.sets` | 1 – 20 |
+| `scheduled_exercise.reps` | 1 – 100 |
+| `scheduled_exercise.weight_kg` | 0 – 1,000 kg (optional) |
 
 ---
 

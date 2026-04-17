@@ -1,38 +1,70 @@
 import * as Brevo from '@getbrevo/brevo';
+import nodemailer from 'nodemailer';
 import { env } from '../config/env';
 
-const getApiInstance = () => {
-  const apiInstance = new Brevo.TransactionalEmailsApi();
-  apiInstance.setApiKey(
-    Brevo.TransactionalEmailsApiApiKeys.apiKey,
-    env.BREVO_API_KEY || '',
-  );
-  return apiInstance;
-};
+// ─── Gmail SMTP transporter (lazy init) ──────────────────────────────────────
+
+let _gmailTransport: ReturnType<typeof nodemailer.createTransport> | null = null;
+
+function getGmailTransport() {
+  if (!_gmailTransport) {
+    _gmailTransport = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: env.GMAIL_USER, pass: env.GMAIL_APP_PASSWORD },
+    });
+  }
+  return _gmailTransport;
+}
+
+// ─── Dispatcher: Brevo → Gmail → warn ────────────────────────────────────────
+
+async function sendEmail(
+  toEmail: string,
+  toName: string,
+  subject: string,
+  html: string,
+): Promise<void> {
+  if (env.BREVO_API_KEY) {
+    const apiInstance = new Brevo.TransactionalEmailsApi();
+    apiInstance.setApiKey(Brevo.TransactionalEmailsApiApiKeys.apiKey, env.BREVO_API_KEY);
+    const mail = new Brevo.SendSmtpEmail();
+    mail.to = [{ email: toEmail, name: toName }];
+    mail.sender = { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME };
+    mail.subject = subject;
+    mail.htmlContent = html;
+    await apiInstance.sendTransacEmail(mail);
+    return;
+  }
+
+  if (env.GMAIL_USER && env.GMAIL_APP_PASSWORD) {
+    await getGmailTransport().sendMail({
+      from: `"GymTrack" <${env.GMAIL_USER}>`,
+      to: `"${toName}" <${toEmail}>`,
+      subject,
+      html,
+    });
+    return;
+  }
+
+  console.warn('[Email] No email provider configured — skipping send');
+}
+
+// ─── Public functions ─────────────────────────────────────────────────────────
 
 export const sendPasswordResetEmail = async (
   toEmail: string,
   toName: string,
   resetToken: string,
 ): Promise<void> => {
-  if (!env.BREVO_API_KEY) {
-    console.warn('[Email] BREVO_API_KEY not set — skipping email send');
-    console.log(`[Email] Reset link: ${env.FRONTEND_URL}/reset-password?token=${resetToken}`);
+  const resetUrl = `${env.FRONTEND_URL}/reset-password?token=${encodeURIComponent(resetToken)}`;
+
+  if (!env.BREVO_API_KEY && !env.GMAIL_USER) {
+    console.warn('[Email] No email provider — reset link (dev only):');
+    console.log(`[Email] ${resetUrl}`);
     return;
   }
 
-  const resetUrl = `${env.FRONTEND_URL}/reset-password?token=${encodeURIComponent(resetToken)}`;
-
-  const apiInstance = getApiInstance();
-  const sendSmtpEmail = new Brevo.SendSmtpEmail();
-
-  sendSmtpEmail.to = [{ email: toEmail, name: toName }];
-  sendSmtpEmail.sender = {
-    email: env.BREVO_SENDER_EMAIL,
-    name: env.BREVO_SENDER_NAME,
-  };
-  sendSmtpEmail.subject = 'Reset your GymTrack password';
-  sendSmtpEmail.htmlContent = `
+  const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <h2 style="color: #2563eb;">Reset your password</h2>
       <p>Hi ${toName},</p>
@@ -47,25 +79,16 @@ export const sendPasswordResetEmail = async (
     </div>
   `;
 
-  await apiInstance.sendTransacEmail(sendSmtpEmail);
+  await sendEmail(toEmail, toName, 'Reset your GymTrack password', html);
 };
 
 export const sendWelcomeEmail = async (
   toEmail: string,
   toName: string,
 ): Promise<void> => {
-  if (!env.BREVO_API_KEY) return;
+  if (!env.BREVO_API_KEY && !env.GMAIL_USER) return;
 
-  const apiInstance = getApiInstance();
-  const sendSmtpEmail = new Brevo.SendSmtpEmail();
-
-  sendSmtpEmail.to = [{ email: toEmail, name: toName }];
-  sendSmtpEmail.sender = {
-    email: env.BREVO_SENDER_EMAIL,
-    name: env.BREVO_SENDER_NAME,
-  };
-  sendSmtpEmail.subject = 'Welcome to GymTrack!';
-  sendSmtpEmail.htmlContent = `
+  const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <h2 style="color: #2563eb;">Welcome to GymTrack!</h2>
       <p>Hi ${toName},</p>
@@ -78,5 +101,5 @@ export const sendWelcomeEmail = async (
     </div>
   `;
 
-  await apiInstance.sendTransacEmail(sendSmtpEmail);
+  await sendEmail(toEmail, toName, 'Welcome to GymTrack!', html);
 };

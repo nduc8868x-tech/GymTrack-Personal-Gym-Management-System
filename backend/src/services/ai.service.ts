@@ -1,16 +1,16 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import Groq from 'groq-sdk';
 import { Response } from 'express';
 import { prisma } from '../config/database';
 import { env } from '../config/env';
 
-// ─── Gemini client (lazy init) ────────────────────────────────────────────────
+// ─── Groq client (lazy init) ──────────────────────────────────────────────────
 
-let _genAI: GoogleGenerativeAI | null = null;
+let _groq: Groq | null = null;
 
-function getGenAI(): GoogleGenerativeAI {
-  if (!env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY is not configured');
-  if (!_genAI) _genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
-  return _genAI;
+function getGroq(): Groq {
+  if (!env.GROQ_API_KEY) throw new Error('GROQ_API_KEY is not configured');
+  if (!_groq) _groq = new Groq({ apiKey: env.GROQ_API_KEY });
+  return _groq;
 }
 
 // ─── Context builder ──────────────────────────────────────────────────────────
@@ -140,7 +140,6 @@ export async function createConversation(
     | 'nutrition_advice'
     | 'progress_review';
 
-  // Take a snapshot of user context at conversation creation time
   const contextSnapshot = await buildUserContext(userId);
 
   return prisma.aiConversation.create({
@@ -184,7 +183,6 @@ export async function streamMessage(
   userContent: string,
   res: Response,
 ) {
-  // Verify conversation belongs to user
   const conv = await prisma.aiConversation.findFirst({
     where: { id: conversationId, user_id: userId },
     include: { messages: { orderBy: { created_at: 'asc' }, take: 40 } },
@@ -195,25 +193,32 @@ export async function streamMessage(
     throw err;
   }
 
-  // Save user message
   await prisma.aiMessage.create({
     data: { conversation_id: conversationId, role: 'user', content: userContent },
   });
 
-  // Build Gemini chat history (exclude latest user msg — we pass it as current turn)
-  const history = conv.messages.map((m) => ({
-    role: m.role === 'user' ? ('user' as const) : ('model' as const),
-    parts: [{ text: m.content }],
+  const contextSnapshot =
+    conv.context_snapshot
+      ? typeof conv.context_snapshot === 'string'
+        ? conv.context_snapshot
+        : JSON.stringify(conv.context_snapshot)
+      : '';
+
+  const systemContent = contextSnapshot
+    ? `${SYSTEM_PROMPT}\n\n${contextSnapshot}`
+    : SYSTEM_PROMPT;
+
+  const history: { role: 'user' | 'assistant'; content: string }[] = conv.messages.map((m) => ({
+    role: m.role === 'user' ? 'user' : 'assistant',
+    content: m.content,
   }));
 
-  // Build context snapshot string from JSONB (Prisma returns object, not string)
-  const contextSnapshot = conv.context_snapshot
-    ? (typeof conv.context_snapshot === 'string'
-        ? conv.context_snapshot
-        : (conv.context_snapshot as string))
-    : '';
+  const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
+    { role: 'system', content: systemContent },
+    ...history,
+    { role: 'user', content: userContent },
+  ];
 
-  // SSE headers
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
@@ -222,35 +227,29 @@ export async function streamMessage(
   let fullResponse = '';
 
   try {
-    const genAI = getGenAI();
+    const groq = getGroq();
 
-    // Use systemInstruction (correct Gemini SDK approach)
-    const model = genAI.getGenerativeModel({
-      model: env.GEMINI_MODEL,
-      systemInstruction: contextSnapshot
-        ? `${SYSTEM_PROMPT}\n\n${contextSnapshot}`
-        : SYSTEM_PROMPT,
+    const streamPromise = groq.chat.completions.create({
+      model: env.GROQ_MODEL,
+      messages,
+      stream: true,
     });
 
-    const chat = model.startChat({ history });
-
-    // 20-second timeout wrapper
-    const streamPromise = chat.sendMessageStream(userContent);
     const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('GEMINI_TIMEOUT')), 20000),
+      setTimeout(() => reject(new Error('GROQ_TIMEOUT')), 20000),
     );
 
-    const result = await Promise.race([streamPromise, timeoutPromise]);
+    const stream = await Promise.race([streamPromise, timeoutPromise]);
 
-    for await (const chunk of result.stream) {
-      const text = chunk.text();
+    for await (const chunk of stream) {
+      const text = chunk.choices[0]?.delta?.content ?? '';
       if (text) {
         fullResponse += text;
         res.write(`data: ${JSON.stringify({ text })}\n\n`);
       }
     }
   } catch (err) {
-    const isTimeout = (err as Error).message === 'GEMINI_TIMEOUT';
+    const isTimeout = (err as Error).message === 'GROQ_TIMEOUT';
     console.error('[AI streamMessage error]', {
       conversationId,
       userId,
@@ -265,13 +264,11 @@ export async function streamMessage(
     res.write(`data: ${JSON.stringify({ text: fallback, error: true })}\n\n`);
   }
 
-  // Save assistant message
   if (fullResponse) {
     await prisma.aiMessage.create({
       data: { conversation_id: conversationId, role: 'assistant', content: fullResponse },
     });
 
-    // Auto-generate title from first message if not set
     if (!conv.title && conv.messages.length === 0) {
       const title = userContent.length > 60 ? userContent.slice(0, 57) + '…' : userContent;
       await prisma.aiConversation.update({
@@ -310,7 +307,6 @@ export async function getInsights(userId: string, period: 'week' | 'month') {
     };
   }
 
-  // Build metrics
   const totalVolume = sessions.reduce(
     (sum, s) => sum + s.session_sets.reduce((sv, set) => sv + (set.weight_kg ?? 0) * (set.reps ?? 0), 0),
     0,
@@ -338,20 +334,23 @@ export async function getInsights(userId: string, period: 'week' | 'month') {
     weight_change_kg: weightChange !== null ? Math.round(weightChange * 10) / 10 : null,
   };
 
-  // Ask Gemini to summarise
   let summary = '';
   try {
-    const genAI = getGenAI();
-    const model = genAI.getGenerativeModel({ model: env.GEMINI_MODEL });
-
+    const groq = getGroq();
     const prompt = `You are a fitness coach. Analyse the following ${period}ly workout data and provide a short (3-5 bullet points) encouraging summary with actionable tips.\n\nData:\n${JSON.stringify(metrics, null, 2)}\n\nKeep it concise and motivating.`;
 
+    type NonStreamCompletion = Awaited<ReturnType<typeof groq.chat.completions.create>> & { choices: { message: { content: string } }[] };
+
     const result = await Promise.race([
-      model.generateContent(prompt),
+      groq.chat.completions.create({
+        model: env.GROQ_MODEL,
+        messages: [{ role: 'user', content: prompt }],
+        stream: false,
+      }) as Promise<NonStreamCompletion>,
       new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000)),
     ]);
 
-    summary = (result as Awaited<ReturnType<typeof model.generateContent>>).response.text();
+    summary = result.choices[0]?.message?.content ?? '';
   } catch (err) {
     console.error('[AI getInsights error]', (err as Error).message);
     summary = `In the past ${days} days you completed ${metrics.workouts_count} workout${metrics.workouts_count !== 1 ? 's' : ''} with a total volume of ${metrics.total_volume_kg} kg. Keep it up!`;

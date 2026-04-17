@@ -1,7 +1,7 @@
 # GymTrack — Technical Design
 ## Tech Stack, Architecture & Module Structure
 
-> **Version**: 1.4
+> **Version**: 1.5
 > **Date**: 2026-04-18
 > **Status**: Approved
 
@@ -126,7 +126,8 @@ gymtrack/
 │   │   │   │   ├── dashboard/            # Dashboard home
 │   │   │   │   ├── schedule/             # Calendar & workout schedule; ScheduledExerciseManager per event
 │   │   │   │   ├── workouts/
-│   │   │   │   │   ├── page.tsx          # Workout home; "Kế Hoạch Hôm Nay" section + handleStartFromPlan
+│   │   │   │   │   ├── page.tsx          # Workout home; weekly 7-day strip + selectedDateStr state +
+│   │   │   │   │   │                     # dynamic plan section + handleStartFromPlan; quick links horizontal grid
 │   │   │   │   │   ├── session/          # Live session logging; plan reference panel (PlanPanel)
 │   │   │   │   │   ├── history/          # Workout history list
 │   │   │   │   │   ├── history/[id]/     # Session detail (read-only)
@@ -244,13 +245,16 @@ gymtrack/
 Luồng kết nối lịch tập → buổi tập thực tế:
 
 ```text
-Schedule page                Workout page               Session page
-──────────────               ────────────               ────────────
-Tạo lịch hôm nay        →   Query /schedule/today  →   PlanPanel hiển thị
-Thêm bài tập vào lịch        Section "Kế Hoạch           progress per exercise
-(ScheduledExerciseManager)   Hôm Nay" + nút BẮT ĐẦU     Tap row → tự điền form
-                             handleStartFromPlan          done/total set counter
-                             → startSession({             tick xanh khi đủ sets
+Schedule page                Workout page                    Session page
+──────────────               ────────────                    ────────────
+Tạo lịch cả tuần        →   Query /schedule?from&to     →   PlanPanel hiển thị
+Thêm bài tập vào lịch        Weekly 7-day strip (T2→CN)      progress per exercise
+(ScheduledExerciseManager)   Click ngày → selectedDateStr    Tap row → tự điền form
+GỢI Ý card → /ai-coach      Section plan động (label =       done/total set counter
+                             "KẾ HOẠCH HÔM NAY" or           tick xanh khi đủ sets
+                             "KẾ HOẠCH THỨ X")
+                             handleStartFromPlan(selectedPlan)
+                             → startSession({
                                plannedExercises,
                                scheduledId })
 ```
@@ -258,11 +262,25 @@ Thêm bài tập vào lịch        Section "Kế Hoạch           progress per
 **Luồng dữ liệu:**
 
 1. `ScheduledExercise` record tạo qua `POST /schedule/:id/exercises`
-2. `GET /schedule/today` trả về lịch ngày hôm nay kèm `scheduled_exercises`
-3. `startSession()` (Zustand) lưu `plannedExercises` vào `ActiveSession` (persisted)
-4. Session page đọc `activeSession.plannedExercises` để render `PlanPanel`
-5. Tap bài tập trong panel → `setSelectedExercise + setWeight + setReps` (pre-fill)
-6. Mỗi set log được đếm theo `exerciseId` và so sánh với `plannedExercise.sets`
+2. `GET /schedule?from=weekFrom&to=weekTo` trả về toàn bộ lịch tuần kèm `scheduled_exercises`
+3. Weekly strip render 7 card (Mon→Sun); card state: blue=selected, emerald=done, violet=có plan, default=nghỉ
+4. `selectedDateStr` (useState) xác định ngày đang xem; `selectedPlan` = `weekSchedules.find(date === selectedDateStr)`
+5. `startSession()` (Zustand) lưu `plannedExercises` vào `ActiveSession` (persisted)
+6. Session page đọc `activeSession.plannedExercises` để render `PlanPanel`
+7. Tap bài tập trong panel → `setSelectedExercise + setWeight + setReps` (pre-fill)
+8. Mỗi set log được đếm theo `exerciseId` và so sánh với `plannedExercise.sets`
 
-*Document version: 1.4 — 2026-04-18*
+**Key types (workouts/page.tsx):**
+
+```typescript
+interface TodaySchedule {
+  id: string;
+  name: string | null;
+  is_completed: boolean;
+  scheduled_date: string;          // dùng để match với selectedDateStr
+  scheduled_exercises: PlannedEx[];
+}
+```
+
+*Document version: 1.5 — 2026-04-18*
 *Status: Approved*

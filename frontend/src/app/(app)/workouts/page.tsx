@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 import { useWorkoutStore } from '@/stores/workoutStore';
@@ -36,6 +36,7 @@ interface TodaySchedule {
   id: string;
   name: string | null;
   is_completed: boolean;
+  scheduled_date: string;
   scheduled_exercises: PlannedEx[];
 }
 
@@ -61,13 +62,43 @@ function formatDateTime(dateStr: string) {
   });
 }
 
+const VI_DAY_SHORT = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+const VI_DAY_FULL  = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+
 export default function WorkoutsPage() {
   const router = useRouter();
   const { activeSession, startSession } = useWorkoutStore();
   const { t } = useT();
   usePageTitle('Tập luyện');
   const [starting, setStarting] = useState(false);
-  const [sessionName, setSessionName] = useState('');
+
+  const todayDateStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const [selectedDateStr, setSelectedDateStr] = useState(todayDateStr);
+
+  // Monday of current week
+  const weekFrom = useMemo(() => {
+    const d = new Date();
+    const dow = d.getDay();
+    const diff = d.getDate() - dow + (dow === 0 ? -6 : 1);
+    d.setDate(diff);
+    return d.toISOString().slice(0, 10);
+  }, []);
+
+  // Sunday of current week
+  const weekTo = useMemo(() => {
+    const d = new Date(weekFrom);
+    d.setDate(d.getDate() + 6);
+    return d.toISOString().slice(0, 10);
+  }, [weekFrom]);
+
+  // 7-day date array Mon→Sun
+  const weekDays = useMemo(() => {
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(weekFrom);
+      d.setDate(d.getDate() + i);
+      return d;
+    });
+  }, [weekFrom]);
 
   // Recent 3 sessions
   const { data: recentData } = useQuery({
@@ -89,16 +120,30 @@ export default function WorkoutsPage() {
 
   const streak = insightsData?.metrics?.streak ?? 0;
 
-  // Today's scheduled plan
-  const todayDateStr = new Date().toISOString().slice(0, 10);
-  const { data: todaySchedules } = useQuery({
-    queryKey: queryKeys.schedule.today(todayDateStr),
+  // Full week schedule
+  const { data: weekSchedules } = useQuery({
+    queryKey: queryKeys.schedule.list({ from: weekFrom, to: weekTo }),
     queryFn: () =>
       api
-        .get<{ data: TodaySchedule[] }>(`/schedule/today?date=${todayDateStr}`)
+        .get<{ data: TodaySchedule[] }>(`/schedule?from=${weekFrom}&to=${weekTo}`)
         .then((r) => r.data.data),
   });
-  const todayPlan = todaySchedules?.find((s) => !s.is_completed) ?? todaySchedules?.[0] ?? null;
+
+  // Plan for selected day
+  const selectedPlan = useMemo(
+    () =>
+      weekSchedules?.find((s) => s.scheduled_date.slice(0, 10) === selectedDateStr) ?? null,
+    [weekSchedules, selectedDateStr],
+  );
+
+  // Map date → schedule for quick lookup in strip
+  const scheduleByDate = useMemo(() => {
+    const map = new Map<string, TodaySchedule>();
+    for (const s of weekSchedules ?? []) {
+      map.set(s.scheduled_date.slice(0, 10), s);
+    }
+    return map;
+  }, [weekSchedules]);
 
   const handleStartFromPlan = async (plan: TodaySchedule) => {
     setStarting(true);
@@ -129,24 +174,14 @@ export default function WorkoutsPage() {
     }
   };
 
-  const handleStartSession = async () => {
-    setStarting(true);
-    try {
-      const res = await api.post<{ data: { id: string; name: string | null; started_at: string } }>(
-        '/workouts/sessions',
-        { name: sessionName || undefined },
-      );
-      const s = res.data.data;
-      startSession({
-        id: s.id,
-        name: s.name ?? t.workouts.defaultName,
-        startedAt: s.started_at,
-      });
-      router.push('/workouts/session');
-    } finally {
-      setStarting(false);
-    }
-  };
+
+
+  // Dynamic header label for plan section
+  const planLabel = useMemo(() => {
+    if (selectedDateStr === todayDateStr) return 'KẾ HOẠCH HÔM NAY';
+    const d = new Date(selectedDateStr + 'T00:00:00');
+    return `KẾ HOẠCH ${VI_DAY_FULL[d.getDay()].toUpperCase()}`;
+  }, [selectedDateStr, todayDateStr]);
 
   // Date header
   const now = new Date();
@@ -214,17 +249,98 @@ export default function WorkoutsPage() {
           </Link>
         )}
 
-        {/* ── Today's Plan ────────────────────────────────────────── */}
-        {todayPlan && todayPlan.scheduled_exercises.length > 0 && (
+        {/* ── Weekly schedule strip ────────────────────────────────── */}
+        <div>
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">LỊCH TUẦN NÀY</p>
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+            {weekDays.map((day) => {
+              const dateStr  = day.toISOString().slice(0, 10);
+              const schedule = scheduleByDate.get(dateStr);
+              const isToday  = dateStr === todayDateStr;
+              const isSelected = dateStr === selectedDateStr;
+              const isDone   = schedule?.is_completed === true;
+              const exCount  = schedule?.scheduled_exercises?.length ?? 0;
+
+              return (
+                <button
+                  key={dateStr}
+                  onClick={() => setSelectedDateStr(dateStr)}
+                  className={cn(
+                    'flex-shrink-0 w-[76px] rounded-2xl border p-3 text-left transition-all',
+                    isSelected
+                      ? 'border-blue-500/60 bg-blue-600/15'
+                      : isDone
+                      ? 'border-emerald-500/40 bg-emerald-600/8 hover:bg-emerald-600/12'
+                      : schedule
+                      ? 'border-violet-500/30 bg-violet-600/8 hover:bg-violet-600/12'
+                      : 'border-white/8 bg-white/4 hover:bg-white/6',
+                  )}
+                >
+                  {/* Day label */}
+                  <p className={cn(
+                    'text-[10px] font-black uppercase tracking-widest',
+                    isSelected ? 'text-blue-400' : 'text-slate-500',
+                  )}>
+                    {VI_DAY_SHORT[day.getDay()]}
+                  </p>
+
+                  {/* Date number + today dot */}
+                  <div className="flex items-center gap-1 mt-0.5 mb-2">
+                    <p className={cn(
+                      'text-lg font-black leading-none',
+                      isSelected ? 'text-white' : isToday ? 'text-blue-300' : 'text-slate-300',
+                    )}>
+                      {day.getDate()}
+                    </p>
+                    {isToday && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
+                    )}
+                  </div>
+
+                  {/* Plan info */}
+                  {schedule ? (
+                    <div>
+                      <p className={cn(
+                        'text-[9px] font-bold leading-tight truncate',
+                        isDone ? 'text-emerald-400' : isSelected ? 'text-violet-300' : 'text-slate-400',
+                      )}>
+                        {schedule.name ?? 'Workout'}
+                      </p>
+                      <div className="flex items-center gap-1 mt-1">
+                        {isDone ? (
+                          <svg className="w-3 h-3 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        ) : (
+                          <span className={cn(
+                            'text-[9px] font-black px-1 py-0.5 rounded',
+                            isSelected ? 'bg-violet-500/30 text-violet-300' : 'bg-white/10 text-slate-500',
+                          )}>
+                            {exCount} bài
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-[9px] text-slate-700 font-medium">Nghỉ</p>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── Selected day plan ────────────────────────────────────── */}
+        {selectedPlan && selectedPlan.scheduled_exercises.length > 0 && (
           <div className="rounded-2xl border border-violet-500/25 bg-violet-600/5 overflow-hidden">
             <div className="flex items-center justify-between px-5 py-3 border-b border-violet-500/15">
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-violet-400" />
-                <p className="text-xs font-black text-violet-400 uppercase tracking-widest">KẾ HOẠCH HÔM NAY</p>
+                <p className="text-xs font-black text-violet-400 uppercase tracking-widest">{planLabel}</p>
               </div>
               {!activeSession && (
                 <button
-                  onClick={() => handleStartFromPlan(todayPlan)}
+                  onClick={() => handleStartFromPlan(selectedPlan)}
                   disabled={starting}
                   className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-violet-500 disabled:opacity-50 transition-colors"
                 >
@@ -237,10 +353,10 @@ export default function WorkoutsPage() {
             </div>
             <div className="px-5 py-3">
               <p className="text-sm font-bold text-white mb-3">
-                {todayPlan.name ?? 'Kế hoạch hôm nay'}
+                {selectedPlan.name ?? 'Kế hoạch'}
               </p>
               <div className="space-y-2">
-                {todayPlan.scheduled_exercises.map((ex, idx) => (
+                {selectedPlan.scheduled_exercises.map((ex, idx) => (
                   <div key={ex.id} className="flex items-center gap-3">
                     <span className="text-[10px] font-black text-violet-500 w-4 shrink-0">{idx + 1}</span>
                     <div className="flex-1 min-w-0">
@@ -258,166 +374,78 @@ export default function WorkoutsPage() {
           </div>
         )}
 
-        {/* ── Main grid ───────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Left: New Session card */}
-          <div className="lg:col-span-2 rounded-2xl bg-white/4 border border-white/8 p-6">
-            <div className="flex items-start gap-4 mb-6">
-              <div className="w-12 h-12 rounded-xl bg-blue-600/15 border border-blue-600/20 flex items-center justify-center shrink-0">
-                <svg className="w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-white">Buổi Tập Mới</h2>
-                <p className="text-sm text-slate-500 mt-0.5">Theo dõi cường độ và khối lượng tập theo thời gian thực</p>
-              </div>
+        {/* ── Quick links ─────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Workout History */}
+          <Link
+            href="/workouts/history"
+            className={cn(
+              'flex items-center gap-4 rounded-2xl bg-white/4 border border-white/8 p-4',
+              'hover:bg-white/6 hover:border-white/12 transition-all group',
+            )}
+          >
+            <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center shrink-0">
+              <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-white">Lịch Sử Tập</p>
+              <p className="text-xs text-slate-500 mt-0.5">Xem hiệu suất buổi trước</p>
+            </div>
+            <svg className="w-4 h-4 text-slate-600 group-hover:text-slate-400 transition-colors shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
 
-            {!activeSession && (
-              <>
-                <div className="mb-6">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2">
-                    Tên Buổi Tập
-                  </label>
-                  <div className="relative">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="vd. Ngày Đẩy Nặng A"
-                      value={sessionName}
-                      onChange={(e) => setSessionName(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && !starting && handleStartSession()}
-                      className={cn(
-                        'w-full rounded-xl bg-[#111223] border border-white/8 pl-11 pr-4 py-4 text-sm text-white placeholder:text-slate-600',
-                        'outline-none transition-all',
-                        'focus:border-blue-500/40 focus:ring-1 focus:ring-blue-500/20',
-                      )}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={handleStartSession}
-                    disabled={starting}
-                    className={cn(
-                      'flex items-center gap-3 rounded-xl px-8 py-4 text-sm font-bold text-white transition-all duration-200',
-                      'bg-blue-600 hover:bg-blue-500 active:scale-[0.98]',
-                      'shadow-xl shadow-blue-600/25',
-                      'disabled:opacity-50 disabled:cursor-not-allowed',
-                    )}
-                  >
-                    {starting ? (
-                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                      </svg>
-                    ) : (
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z" />
-                      </svg>
-                    )}
-                    {starting ? t.common.loading : 'BẮT ĐẦU TẬP'}
-                  </button>
-                  <p className="text-xs text-slate-600 italic">Ước tính: 75 phút</p>
-                </div>
-              </>
+          {/* Workout Library */}
+          <Link
+            href="/workouts/exercises"
+            className={cn(
+              'flex items-center gap-4 rounded-2xl bg-white/4 border border-white/8 p-4',
+              'hover:bg-white/6 hover:border-white/12 transition-all group',
             )}
-
-            {activeSession && (
-              <Link
-                href="/workouts/session"
-                className={cn(
-                  'flex items-center justify-center gap-3 w-full rounded-xl px-8 py-4 text-sm font-bold text-white',
-                  'bg-blue-600 hover:bg-blue-500 transition-colors',
-                )}
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-                Tiếp tục buổi tập
-              </Link>
-            )}
-          </div>
-
-          {/* Right: Quick links */}
-          <div className="space-y-3">
-            {/* Workout History */}
-            <Link
-              href="/workouts/history"
-              className={cn(
-                'flex items-center gap-4 rounded-2xl bg-white/4 border border-white/8 p-4',
-                'hover:bg-white/6 hover:border-white/12 transition-all group',
-              )}
-            >
-              <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center shrink-0">
-                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-white">Lịch Sử Tập</p>
-                <p className="text-xs text-slate-500 mt-0.5">Xem hiệu suất buổi trước</p>
-              </div>
-              <svg className="w-4 h-4 text-slate-600 group-hover:text-slate-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          >
+            <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center shrink-0">
+              <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
               </svg>
-            </Link>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-white">Thư Viện Bài Tập</p>
+              <p className="text-xs text-slate-500 mt-0.5">Duyệt các mẫu chương trình tập</p>
+            </div>
+            <svg className="w-4 h-4 text-slate-600 group-hover:text-slate-400 transition-colors shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
 
-            {/* Workout Library */}
-            <Link
-              href="/workouts/exercises"
-              className={cn(
-                'flex items-center gap-4 rounded-2xl bg-white/4 border border-white/8 p-4',
-                'hover:bg-white/6 hover:border-white/12 transition-all group',
-              )}
-            >
-              <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center shrink-0">
-                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          {/* Weekly Streak */}
+          <div className="rounded-2xl bg-white/4 border border-white/8 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center shrink-0">
+                <svg className="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                 </svg>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-white">Thư Viện Bài Tập</p>
-                <p className="text-xs text-slate-500 mt-0.5">Duyệt các mẫu chương trình tập</p>
-              </div>
-              <svg className="w-4 h-4 text-slate-600 group-hover:text-slate-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
-            </Link>
-
-            {/* Weekly Streak */}
-            <div className="rounded-2xl bg-white/4 border border-white/8 p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center">
-                  <svg className="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                  </svg>
-                </div>
-                <p className="text-sm font-bold text-white">Chuỗi Tuần</p>
-              </div>
-              <p className="text-xs text-slate-400 leading-relaxed mb-3">
-                {streak > 0
-                  ? `Bạn đã tập ${streak} ngày liên tiếp. Hãy tiếp tục đà đó!`
-                  : 'Bắt đầu chuỗi tập hôm nay. Kiên trì là chìa khóa.'}
-              </p>
-              {/* Progress dots (7 days of week) */}
-              <div className="flex gap-1.5">
-                {Array.from({ length: 7 }, (_, i) => (
-                  <div
-                    key={i}
-                    className={cn(
-                      'flex-1 h-1.5 rounded-full',
-                      i < streak % 7 ? 'bg-blue-500' : 'bg-white/10',
-                    )}
-                  />
-                ))}
-              </div>
+              <p className="text-sm font-bold text-white">Chuỗi Tuần</p>
+              {streak > 0 && (
+                <span className="ml-auto text-xs font-black text-amber-400">{streak} ngày</span>
+              )}
+            </div>
+            <p className="text-xs text-slate-500 leading-relaxed mb-3">
+              {streak > 0 ? 'Hãy tiếp tục đà đó!' : 'Kiên trì là chìa khóa.'}
+            </p>
+            <div className="flex gap-1.5">
+              {Array.from({ length: 7 }, (_, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    'flex-1 h-1.5 rounded-full',
+                    i < streak % 7 ? 'bg-amber-400' : 'bg-white/10',
+                  )}
+                />
+              ))}
             </div>
           </div>
         </div>
@@ -442,9 +470,9 @@ export default function WorkoutsPage() {
               {recentData.map((session, idx) => {
                 const dur = durationMins(session.started_at, session.ended_at);
                 const icons = [
-                  <path key="0" strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />,   // lightning — PR
-                  <path key="1" strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />, // trending up
-                  <path key="2" strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />, // check
+                  <path key="0" strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />,
+                  <path key="1" strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />,
+                  <path key="2" strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />,
                 ];
                 const iconColors = ['text-blue-400', 'text-emerald-400', 'text-blue-400'];
                 return (
@@ -456,7 +484,6 @@ export default function WorkoutsPage() {
                       'hover:bg-white/6 hover:border-white/12 transition-all',
                     )}
                   >
-                    {/* Header */}
                     <div className="flex items-start justify-between mb-3">
                       <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center">
                         <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -468,7 +495,6 @@ export default function WorkoutsPage() {
                       </svg>
                     </div>
 
-                    {/* Name + time */}
                     <p className="font-bold text-white text-sm leading-tight">
                       {session.name ?? t.workouts.defaultName}
                     </p>
@@ -476,7 +502,6 @@ export default function WorkoutsPage() {
                       {relativeDay(session.started_at)}, {formatDateTime(session.started_at).split(',')[1]?.trim()}
                     </p>
 
-                    {/* Stats */}
                     <div className="flex gap-4 pt-3 border-t border-white/5">
                       <div>
                         <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">SETS</p>

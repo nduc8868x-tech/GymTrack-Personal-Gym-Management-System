@@ -701,7 +701,7 @@ export default function SchedulePage() {
         {/* Bottom row */}
         <div className="grid grid-cols-3 gap-4">
           <Link
-            href="/workouts"
+            href="/ai-coach"
             className="col-span-2 relative rounded-2xl overflow-hidden min-h-[140px] group"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-slate-900 to-[#1a1b2e]" />

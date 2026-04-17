@@ -1,7 +1,7 @@
 # GymTrack — Implementation Workflow
 ## Sprint Plan & Development Guidelines
 
-> **Version**: 1.4
+> **Version**: 1.5
 > **Date**: 2026-04-18
 > **Status**: Approved
 
@@ -125,7 +125,12 @@
 ✅ 6.5.4  FE: queryKeys.schedule refactor thành object có sub-keys (list, today)
 ✅ 6.5.5  FE: Zustand workoutStore mở rộng — PlannedExercise + scheduledId trong ActiveSession
 ✅ 6.5.6  FE: Schedule page — ScheduledExerciseManager (thêm/sửa/xóa bài tập trong lịch)
-✅ 6.5.7  FE: Workout page — section "Kế Hoạch Hôm Nay" + handleStartFromPlan
+✅ 6.5.7  FE: Workout page — weekly 7-day strip + dynamic selected-day plan section + handleStartFromPlan
+           - 7-day horizontal scroll strip (T2→CN), mỗi card: tên ngày, số ngày, tên workout, số bài
+           - Border state: blue = đang chọn, emerald = đã xong, violet = có kế hoạch, mặc định = nghỉ
+           - Chấm xanh trên card hôm nay; click card → selectedDateStr → cập nhật section bên dưới
+           - Label dynamic: "KẾ HOẠCH HÔM NAY" / "KẾ HOẠCH THỨ X" tùy ngày chọn
+           - Thay query /schedule/today bằng /schedule?from=weekFrom&to=weekTo (cover cả tuần)
 ✅ 6.5.8  FE: Session page — panel kế hoạch tham chiếu (tap bài → tự điền form, progress tracker)
 ```
 
@@ -151,18 +156,23 @@
         - BE: onboardingSchema thêm current_weight, completeOnboarding tạo BodyMeasurement record
         - FE: onboarding/page.tsx dark-theme rewrite, current_weight field + diff hint
           ("Mục tiêu giảm/tăng X kg")
-⬜ 7.7  Responsive: kiểm tra tất cả màn hình tại 375px mobile viewport
-⬜ 7.8  Error states: network error, 404, session expired, API fallback
-⬜ 7.9  Empty states: kiểm tra tất cả màn hình
-⬜ 7.10 Write integration tests for key APIs (BE):
+✅ 7.7  Schedule page — GỢI Ý card link đổi từ /workouts → /ai-coach
+✅ 7.8  Workout page — xóa card "Buổi Tập Mới" (session name input + BẮT ĐẦU TẬP button)
+✅ 7.9  Workout page — quick links (Lịch Sử Tập, Thư Viện Bài Tập, Chuỗi Tuần) đổi từ
+        vertical stack → horizontal 3-column grid (sm:grid-cols-3); Chuỗi Tuần compact
+        (streak số ngày hiển thị inline, progress bar màu amber)
+⬜ 7.10 Responsive: kiểm tra tất cả màn hình tại 375px mobile viewport
+⬜ 7.11 Error states: network error, 404, session expired, API fallback
+⬜ 7.12 Empty states: kiểm tra tất cả màn hình
+⬜ 7.13 Write integration tests for key APIs (BE):
         - Auth: register, login, refresh token, forgot/reset password
         - Workout: create session, log set, auto-update personal_records
         - Nutrition: log food, macro calculation
         - AI: mock Groq API response, verify context-building logic
-⬜ 7.11 Setup CI/CD: GitHub Actions (lint + test on PR)
-⬜ 7.12 Deploy BE to Render + đổi DATABASE_URL sang Neon (production) trong environment variables
-⬜ 7.13 Deploy FE to Vercel + configure environment variables
-⬜ 7.14 Smoke test entire happy path on production
+⬜ 7.14 Setup CI/CD: GitHub Actions (lint + test on PR)
+⬜ 7.15 Deploy BE to Render + đổi DATABASE_URL sang Neon (production) trong environment variables
+⬜ 7.16 Deploy FE to Vercel + configure environment variables
+⬜ 7.17 Smoke test entire happy path on production
 ```
 
 ---
@@ -176,5 +186,5 @@
 
 ---
 
-*Document version: 1.4 — 2026-04-18*
+*Document version: 1.5 — 2026-04-18*
 *Status: Approved*

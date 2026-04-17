@@ -1,7 +1,7 @@
 # GymTrack — Implementation Workflow
 ## Sprint Plan & Development Guidelines
 
-> **Version**: 1.3
+> **Version**: 1.4
 > **Date**: 2026-04-18
 > **Status**: Approved
 
@@ -126,7 +126,7 @@
 ✅ 6.5.5  FE: Zustand workoutStore mở rộng — PlannedExercise + scheduledId trong ActiveSession
 ✅ 6.5.6  FE: Schedule page — ScheduledExerciseManager (thêm/sửa/xóa bài tập trong lịch)
 ✅ 6.5.7  FE: Workout page — section "Kế Hoạch Hôm Nay" + handleStartFromPlan
-⬜ 6.5.8  FE: Session page — panel kế hoạch tham chiếu (tap bài → tự điền form, progress tracker)
+✅ 6.5.8  FE: Session page — panel kế hoạch tham chiếu (tap bài → tự điền form, progress tracker)
 ```
 
 ### SPRINT 7 — UI Polish & Deploy
@@ -140,18 +140,29 @@
         filter chips active state theo màu nhóm cơ, form thêm bài tập với label tiếng Việt
 ✅ 7.4  Nutrition Log page — dịch macro labels (Carbs → Tinh bột, Fat → Chất béo),
         custom food form labels tiếng Việt
-⬜ 7.5  Responsive: kiểm tra tất cả màn hình tại 375px mobile viewport
-⬜ 7.6  Error states: network error, 404, session expired, API fallback
-⬜ 7.7  Empty states: kiểm tra tất cả màn hình
-⬜ 7.8  Write integration tests for key APIs (BE):
+✅ 7.5  Profile & Settings page (app)/settings/page.tsx — 5 sections:
+        - Thông tin cá nhân (name, gender, birthdate, height — PUT /auth/profile)
+        - Thông số cơ thể (current weight từ GET /progress/measurements?limit=1, target weight + goal
+          từ user_goals, progress bar, link → trang Tiến trình)
+        - Cài đặt (weight unit, notifications toggle — PUT /auth/settings)
+        - Đổi mật khẩu (POST /auth/forgot-password → gửi link reset qua email)
+        - Tài khoản (logout button)
+✅ 7.6  Onboarding fix — Step 2 thêm field "Cân nặng hiện tại":
+        - BE: onboardingSchema thêm current_weight, completeOnboarding tạo BodyMeasurement record
+        - FE: onboarding/page.tsx dark-theme rewrite, current_weight field + diff hint
+          ("Mục tiêu giảm/tăng X kg")
+⬜ 7.7  Responsive: kiểm tra tất cả màn hình tại 375px mobile viewport
+⬜ 7.8  Error states: network error, 404, session expired, API fallback
+⬜ 7.9  Empty states: kiểm tra tất cả màn hình
+⬜ 7.10 Write integration tests for key APIs (BE):
         - Auth: register, login, refresh token, forgot/reset password
         - Workout: create session, log set, auto-update personal_records
         - Nutrition: log food, macro calculation
         - AI: mock Groq API response, verify context-building logic
-⬜ 7.9  Setup CI/CD: GitHub Actions (lint + test on PR)
-⬜ 7.10 Deploy BE to Render + đổi DATABASE_URL sang Neon (production) trong environment variables
-⬜ 7.11 Deploy FE to Vercel + configure environment variables
-⬜ 7.12 Smoke test entire happy path on production
+⬜ 7.11 Setup CI/CD: GitHub Actions (lint + test on PR)
+⬜ 7.12 Deploy BE to Render + đổi DATABASE_URL sang Neon (production) trong environment variables
+⬜ 7.13 Deploy FE to Vercel + configure environment variables
+⬜ 7.14 Smoke test entire happy path on production
 ```
 
 ---
@@ -165,5 +176,5 @@
 
 ---
 
-*Document version: 1.3 — 2026-04-18*
+*Document version: 1.4 — 2026-04-18*
 *Status: Approved*

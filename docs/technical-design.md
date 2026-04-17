@@ -1,7 +1,7 @@
 # GymTrack — Technical Design
 ## Tech Stack, Architecture & Module Structure
 
-> **Version**: 1.3
+> **Version**: 1.4
 > **Date**: 2026-04-18
 > **Status**: Approved
 
@@ -124,10 +124,10 @@ gymtrack/
 │   │   │   │   └── onboarding/
 │   │   │   ├── (app)/                    # Protected routes (login required)
 │   │   │   │   ├── dashboard/            # Dashboard home
-│   │   │   │   ├── schedule/             # Calendar & workout schedule
+│   │   │   │   ├── schedule/             # Calendar & workout schedule; ScheduledExerciseManager per event
 │   │   │   │   ├── workouts/
-│   │   │   │   │   ├── page.tsx          # Workout home (start session)
-│   │   │   │   │   ├── session/          # Live session logging (fullscreen)
+│   │   │   │   │   ├── page.tsx          # Workout home; "Kế Hoạch Hôm Nay" section + handleStartFromPlan
+│   │   │   │   │   ├── session/          # Live session logging; plan reference panel (PlanPanel)
 │   │   │   │   │   ├── history/          # Workout history list
 │   │   │   │   │   ├── history/[id]/     # Session detail (read-only)
 │   │   │   │   │   ├── exercises/        # Exercise library
@@ -141,7 +141,7 @@ gymtrack/
 │   │   │   │   │   └── plan/             # Nutrition plan settings
 │   │   │   │   ├── ai-coach/             # AI Coach conversations list
 │   │   │   │   │   └── [id]/             # AI Coach chat
-│   │   │   │   └── profile/              # Profile & settings (untracked, local only)
+│   │   │   │   └── settings/             # Profile & Settings — thông tin, thông số cơ thể, cài đặt, đổi mật khẩu
 │   │   │   └── layout.tsx
 │   │   ├── components/
 │   │   │   └── layout/                   # Sidebar, BottomNav
@@ -151,11 +151,11 @@ gymtrack/
 │   │   │   ├── api.ts                    # Axios instance + refresh token interceptor
 │   │   │   ├── utils.ts                  # cn(), formatDate()...
 │   │   │   ├── constants.ts              # API_URL, muscle groups
-│   │   │   ├── queryKeys.ts              # React Query key factory
+│   │   │   ├── queryKeys.ts              # React Query key factory — schedule sub-keys: .list() / .today()
 │   │   │   └── i18n/                     # i18n context — locked to Vietnamese (locale cố định 'vi')
 │   │   ├── stores/                       # Zustand stores (client state only)
 │   │   │   ├── authStore.ts              # User info, isAuthenticated
-│   │   │   ├── workoutStore.ts           # Active session state (persisted)
+│   │   │   ├── workoutStore.ts           # Active session state (persisted) — incl. PlannedExercise + scheduledId
 │   │   │   ├── nutritionStore.ts         # Daily food log state
 │   │   │   └── timerStore.ts             # Rest timer state
 │   │   └── middleware.ts                 # Route protection (redirect if not logged in)
@@ -183,7 +183,7 @@ gymtrack/
 │   │   │   ├── exercises.service.ts      # Exercise CRUD + image upload
 │   │   │   ├── workouts.service.ts       # Session + sets + PR tracking
 │   │   │   ├── plans.service.ts          # Workout plan CRUD
-│   │   │   ├── schedule.service.ts       # Scheduled workout CRUD
+│   │   │   ├── schedule.service.ts       # Scheduled workout CRUD + ScheduledExercise CRUD + getTodaySchedule
 │   │   │   ├── progress.service.ts       # Measurements + charts + records
 │   │   │   ├── nutrition.service.ts      # Food log + Open Food Facts proxy
 │   │   │   ├── notifications.service.ts  # Web Push API
@@ -212,7 +212,7 @@ gymtrack/
 │   │   │   └── reminders.ts              # Workout reminder handler (Web Push + email)
 │   │   └── app.ts                        # Express app setup + route mounting
 │   ├── prisma/
-│   │   ├── schema.prisma                 # 20 models, PostgreSQL
+│   │   ├── schema.prisma                 # 21 models, PostgreSQL (incl. ScheduledExercise)
 │   │   ├── seed.ts                       # Seed 100+ exercises into DB
 │   │   └── migrations/                   # Prisma migration history
 │   └── __tests__/                        # Test directory (in progress)
@@ -232,10 +232,37 @@ gymtrack/
 | **Interactive hover** | `hover:bg-white/6 hover:border-white/12` |
 | **Primary color** | Blue-600 (`#2563eb`) — buttons, active states, progress bars |
 | **Text hierarchy** | `text-white` (primary) → `text-slate-300` (secondary) → `text-slate-500` (muted) → `text-slate-700` (disabled) |
-| **Accent colors** | Emerald (success), Amber (warning/streak), Red (destructive), per-muscle badge colors |
+| **Accent colors** | Emerald (success), Amber (warning/streak), Red (destructive), Violet (plan/schedule panel), per-muscle badge colors |
 | **Language** | 100% tiếng Việt — `I18nContext` hardcoded `locale: 'vi'`, `changeLocale` là no-op. Tất cả hardcoded English strings đã được thay bằng tiếng Việt |
 | **Typography** | Inter font (Google Fonts subset latin) |
 | **Border radius** | `--radius: 0.75rem` → 12px base; cards dùng `rounded-2xl` (16px) |
 
-*Document version: 1.3 — 2026-04-18*
+---
+
+## Schedule ↔ Workout Integration (Sprint 6.5)
+
+Luồng kết nối lịch tập → buổi tập thực tế:
+
+```text
+Schedule page                Workout page               Session page
+──────────────               ────────────               ────────────
+Tạo lịch hôm nay        →   Query /schedule/today  →   PlanPanel hiển thị
+Thêm bài tập vào lịch        Section "Kế Hoạch           progress per exercise
+(ScheduledExerciseManager)   Hôm Nay" + nút BẮT ĐẦU     Tap row → tự điền form
+                             handleStartFromPlan          done/total set counter
+                             → startSession({             tick xanh khi đủ sets
+                               plannedExercises,
+                               scheduledId })
+```
+
+**Luồng dữ liệu:**
+
+1. `ScheduledExercise` record tạo qua `POST /schedule/:id/exercises`
+2. `GET /schedule/today` trả về lịch ngày hôm nay kèm `scheduled_exercises`
+3. `startSession()` (Zustand) lưu `plannedExercises` vào `ActiveSession` (persisted)
+4. Session page đọc `activeSession.plannedExercises` để render `PlanPanel`
+5. Tap bài tập trong panel → `setSelectedExercise + setWeight + setReps` (pre-fill)
+6. Mỗi set log được đếm theo `exerciseId` và so sánh với `plannedExercise.sets`
+
+*Document version: 1.4 — 2026-04-18*
 *Status: Approved*

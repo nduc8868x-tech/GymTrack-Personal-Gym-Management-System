@@ -293,6 +293,7 @@ export async function completeOnboarding(
     gender?: 'male' | 'female' | 'other';
     birthdate?: string;
     height_cm?: number;
+    current_weight?: number;
     goal_type?: 'muscle_gain' | 'fat_loss' | 'strength' | 'general_health';
     target_weight?: number;
     target_date?: string;
@@ -300,7 +301,7 @@ export async function completeOnboarding(
     timezone?: string;
   },
 ) {
-  const { goal_type, target_weight, target_date, weight_unit, timezone, ...profileData } = data;
+  const { goal_type, target_weight, target_date, weight_unit, timezone, current_weight, ...profileData } = data;
 
   await prisma.$transaction(async (tx) => {
     // Update profile
@@ -320,6 +321,13 @@ export async function completeOnboarding(
         where: { user_id: userId },
         create: { user_id: userId, ...(weight_unit && { weight_unit }), ...(timezone && { timezone }) },
         update: { ...(weight_unit && { weight_unit }), ...(timezone && { timezone }) },
+      });
+    }
+
+    // Create initial measurement if current_weight provided
+    if (current_weight !== undefined) {
+      await tx.bodyMeasurement.create({
+        data: { user_id: userId, weight_kg: current_weight, measured_at: new Date() },
       });
     }
 

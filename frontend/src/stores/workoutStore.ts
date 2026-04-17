@@ -12,11 +12,23 @@ export interface SetLog {
   isPersonalRecord?: boolean;
 }
 
+export interface PlannedExercise {
+  id: string;
+  exerciseId: string;
+  exerciseName: string;
+  primaryMuscle: string;
+  sets: number;
+  reps: number;
+  weightKg: number | null;
+}
+
 export interface ActiveSession {
   id: string;
   name: string;
   startedAt: string;
   sets: SetLog[];
+  scheduledId?: string;
+  plannedExercises?: PlannedExercise[];
 }
 
 interface WorkoutState {
@@ -56,7 +68,6 @@ export const useWorkoutStore = create<WorkoutState>()(
     }),
     {
       name: 'workout-active-session',
-      // Only persist activeSession (not actions)
       partialize: (state) => ({ activeSession: state.activeSession }),
     },
   ),

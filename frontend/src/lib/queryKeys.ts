@@ -14,7 +14,10 @@ export const queryKeys = {
     all: () => ['plans'] as const,
     detail: (id: string) => ['plans', id] as const,
   },
-  schedule: (params?: object) => ['schedule', params] as const,
+  schedule: {
+    list: (params?: object) => ['schedule', 'list', params] as const,
+    today: (date?: string) => ['schedule', 'today', date] as const,
+  },
   progress: {
     measurements: () => ['progress', 'measurements'] as const,
     charts: () => ['progress', 'charts'] as const,

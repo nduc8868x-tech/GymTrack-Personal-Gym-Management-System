@@ -11,6 +11,24 @@ import { usePageTitle } from '@/hooks/usePageTitle';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+interface ExerciseRef {
+  id: string;
+  name: string;
+  primary_muscle: string;
+  equipment: string;
+}
+
+interface ScheduledExercise {
+  id: string;
+  exercise_id: string;
+  sets: number;
+  reps: number;
+  weight_kg: number | null;
+  order_index: number;
+  notes: string | null;
+  exercise: ExerciseRef;
+}
+
 interface ScheduledWorkout {
   id: string;
   name: string | null;
@@ -19,6 +37,7 @@ interface ScheduledWorkout {
   is_completed: boolean;
   plan_day: { id: string; name: string | null; day_of_week: number } | null;
   plan: { id: string; name: string } | null;
+  scheduled_exercises: ScheduledExercise[];
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -47,6 +66,240 @@ function formatTime(isoTime: string | null): string {
   const match = isoTime.match(/T(\d{2}:\d{2})/);
   if (match) return match[1];
   return isoTime.slice(0, 5);
+}
+
+// ─── Exercise Picker (inline mini picker) ─────────────────────────────────────
+
+function ExercisePickerInline({
+  onSelect,
+  onClose,
+}: {
+  onSelect: (ex: ExerciseRef) => void;
+  onClose: () => void;
+}) {
+  const [search, setSearch] = useState('');
+
+  const { data: exercises = [] } = useQuery({
+    queryKey: queryKeys.exercises.all({ search }),
+    queryFn: () => {
+      const params = new URLSearchParams({ limit: '50' });
+      if (search) params.set('search', search);
+      return api
+        .get<{ data: ExerciseRef[] }>(`/exercises?${params}`)
+        .then((r) => r.data.data);
+    },
+  });
+
+  return (
+    <div className="fixed inset-0 bg-black/80 z-[60] flex items-end sm:items-center justify-center p-4">
+      <div className="w-full max-w-sm bg-[#1e1f35] rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[70vh]">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
+          <h3 className="font-bold text-sm text-white">Chọn bài tập</h3>
+          <button onClick={onClose} className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center text-slate-400 hover:text-white">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+        <div className="px-4 py-2 border-b border-white/5">
+          <input
+            autoFocus
+            type="text"
+            placeholder="Tìm kiếm..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-slate-600 outline-none focus:border-blue-600/50"
+          />
+        </div>
+        <div className="flex-1 overflow-y-auto divide-y divide-white/5">
+          {exercises.map((ex) => (
+            <button
+              key={ex.id}
+              onClick={() => onSelect(ex)}
+              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors"
+            >
+              <div>
+                <p className="text-sm font-medium text-white">{ex.name}</p>
+                <p className="text-xs text-slate-500 capitalize">{ex.primary_muscle.replace('_', ' ')}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Add Exercise Form ────────────────────────────────────────────────────────
+
+function AddExerciseForm({
+  scheduledId,
+  exercise,
+  onSaved,
+  onCancel,
+}: {
+  scheduledId: string;
+  exercise: ExerciseRef;
+  onSaved: () => void;
+  onCancel: () => void;
+}) {
+  const [sets, setSets] = useState('3');
+  const [reps, setReps] = useState('10');
+  const [weight, setWeight] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await api.post(`/schedule/${scheduledId}/exercises`, {
+        exercise_id: exercise.id,
+        sets: parseInt(sets) || 3,
+        reps: parseInt(reps) || 10,
+        ...(weight ? { weight_kg: parseFloat(weight) } : {}),
+      });
+      onSaved();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-blue-600/20 bg-blue-600/5 p-3 space-y-2">
+      <p className="text-xs font-bold text-blue-400">{exercise.name}</p>
+      <div className="grid grid-cols-3 gap-2">
+        <div>
+          <label className="text-[10px] text-slate-500 mb-1 block">Sets</label>
+          <input
+            type="number"
+            inputMode="numeric"
+            value={sets}
+            onChange={(e) => setSets(e.target.value)}
+            className="w-full rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white outline-none focus:border-blue-600/50"
+          />
+        </div>
+        <div>
+          <label className="text-[10px] text-slate-500 mb-1 block">Reps</label>
+          <input
+            type="number"
+            inputMode="numeric"
+            value={reps}
+            onChange={(e) => setReps(e.target.value)}
+            className="w-full rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white outline-none focus:border-blue-600/50"
+          />
+        </div>
+        <div>
+          <label className="text-[10px] text-slate-500 mb-1 block">Tạ (kg)</label>
+          <input
+            type="number"
+            inputMode="decimal"
+            placeholder="—"
+            value={weight}
+            onChange={(e) => setWeight(e.target.value)}
+            className="w-full rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white outline-none focus:border-blue-600/50"
+          />
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-500 disabled:opacity-50 transition-colors"
+        >
+          {saving ? 'Đang lưu...' : 'Thêm'}
+        </button>
+        <button
+          onClick={onCancel}
+          className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-slate-400 hover:text-white transition-colors"
+        >
+          Huỷ
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Exercise Manager (inside WorkoutDetail) ──────────────────────────────────
+
+function ScheduledExerciseManager({
+  scheduledId,
+  exercises,
+  onChanged,
+}: {
+  scheduledId: string;
+  exercises: ScheduledExercise[];
+  onChanged: () => void;
+}) {
+  const [showPicker, setShowPicker] = useState(false);
+  const [pendingExercise, setPendingExercise] = useState<ExerciseRef | null>(null);
+  const [removing, setRemoving] = useState<string | null>(null);
+
+  const handleRemove = async (entryId: string) => {
+    setRemoving(entryId);
+    try {
+      await api.delete(`/schedule/${scheduledId}/exercises/${entryId}`);
+      onChanged();
+    } finally {
+      setRemoving(null);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Bài tập</p>
+        <button
+          onClick={() => setShowPicker(true)}
+          className="flex items-center gap-1 rounded-lg bg-blue-600/15 border border-blue-600/20 px-2.5 py-1.5 text-[11px] font-bold text-blue-400 hover:bg-blue-600/25 transition-colors"
+        >
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          Thêm bài
+        </button>
+      </div>
+
+      {exercises.length === 0 && !pendingExercise && (
+        <p className="text-xs text-slate-600 text-center py-3">Chưa có bài tập — nhấn "Thêm bài" để bắt đầu</p>
+      )}
+
+      <div className="space-y-2">
+        {exercises.map((ex) => (
+          <div key={ex.id} className="flex items-center gap-3 rounded-xl border border-white/8 bg-white/3 px-3 py-2.5">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-white truncate">{ex.exercise.name}</p>
+              <p className="text-xs text-slate-500">
+                {ex.sets} × {ex.reps} reps
+                {ex.weight_kg != null ? ` @ ${ex.weight_kg} kg` : ''}
+              </p>
+            </div>
+            <button
+              onClick={() => handleRemove(ex.id)}
+              disabled={removing === ex.id}
+              className="text-slate-600 hover:text-red-400 transition-colors disabled:opacity-40"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        ))}
+
+        {pendingExercise && (
+          <AddExerciseForm
+            scheduledId={scheduledId}
+            exercise={pendingExercise}
+            onSaved={() => { setPendingExercise(null); onChanged(); }}
+            onCancel={() => setPendingExercise(null)}
+          />
+        )}
+      </div>
+
+      {showPicker && (
+        <ExercisePickerInline
+          onSelect={(ex) => { setPendingExercise(ex); setShowPicker(false); }}
+          onClose={() => setShowPicker(false)}
+        />
+      )}
+    </div>
+  );
 }
 
 // ─── Add Workout Modal ────────────────────────────────────────────────────────
@@ -135,11 +388,13 @@ function WorkoutDetail({
   onClose,
   onDeleted,
   onToggleComplete,
+  onExercisesChanged,
 }: {
   workout: ScheduledWorkout;
   onClose: () => void;
   onDeleted: () => void;
   onToggleComplete: () => void;
+  onExercisesChanged: () => void;
 }) {
   const { t } = useT();
   const [deleting, setDeleting] = useState(false);
@@ -157,8 +412,8 @@ function WorkoutDetail({
 
   return (
     <div className="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-[#1e1f35] rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
+      <div className="w-full max-w-sm bg-[#1e1f35] rounded-2xl border border-white/10 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 shrink-0">
           <div className="min-w-0 flex-1">
             <h2 className="font-bold text-sm text-white truncate">{workout.name ?? t.workouts.defaultName}</h2>
             {workout.is_completed && (
@@ -176,7 +431,9 @@ function WorkoutDetail({
             </svg>
           </button>
         </div>
-        <div className="p-5 space-y-4">
+
+        <div className="p-5 space-y-4 overflow-y-auto">
+          {/* Info */}
           <div className="space-y-2 text-sm">
             <div className="flex items-center gap-2 text-slate-400">
               <svg className="w-4 h-4 text-slate-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -202,7 +459,17 @@ function WorkoutDetail({
             )}
           </div>
 
-          <div className="flex gap-2">
+          {/* Exercise Manager */}
+          <div className="border-t border-white/5 pt-4">
+            <ScheduledExerciseManager
+              scheduledId={workout.id}
+              exercises={workout.scheduled_exercises}
+              onChanged={onExercisesChanged}
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2 pt-1">
             <button
               onClick={onToggleComplete}
               className={cn(
@@ -242,25 +509,30 @@ export default function SchedulePage() {
   usePageTitle('Lịch tập');
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [addDate, setAddDate] = useState<string | null>(null);
-  const [selectedWorkout, setSelectedWorkout] = useState<ScheduledWorkout | null>(null);
+  const [selectedWorkoutId, setSelectedWorkoutId] = useState<string | null>(null);
 
   const from = toDateStr(weekStart);
   const to = toDateStr(addDays(weekStart, 6));
 
   const { data: schedules } = useQuery({
-    queryKey: queryKeys.schedule({ from, to }),
+    queryKey: queryKeys.schedule.list({ from, to }),
     queryFn: () =>
       api
         .get<{ data: ScheduledWorkout[] }>(`/schedule?from=${from}&to=${to}`)
         .then((r) => r.data.data),
   });
 
+  // Derive selectedWorkout from live schedules so it auto-updates after mutations
+  const selectedWorkout = useMemo(
+    () => schedules?.find((s) => s.id === selectedWorkoutId) ?? null,
+    [schedules, selectedWorkoutId],
+  );
+
   const toggleCompleteMutation = useMutation({
     mutationFn: ({ id, is_completed }: { id: string; is_completed: boolean }) =>
       api.put(`/schedule/${id}`, { is_completed }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.schedule({ from, to }) });
-      setSelectedWorkout(null);
+      qc.invalidateQueries({ queryKey: queryKeys.schedule.list({ from, to }) });
     },
   });
 
@@ -281,17 +553,12 @@ export default function SchedulePage() {
 
   const todayStr = toDateStr(new Date());
 
-  const handleSaved = () => {
-    qc.invalidateQueries({ queryKey: queryKeys.schedule({ from, to }) });
-    setAddDate(null);
-  };
+  const invalidateSchedule = () =>
+    qc.invalidateQueries({ queryKey: queryKeys.schedule.list({ from, to }) });
 
-  const handleDeleted = () => {
-    qc.invalidateQueries({ queryKey: queryKeys.schedule({ from, to }) });
-    setSelectedWorkout(null);
-  };
+  const handleSaved = () => { invalidateSchedule(); setAddDate(null); };
+  const handleDeleted = () => { invalidateSchedule(); setSelectedWorkoutId(null); };
 
-  // Weekly stats
   const allWorkouts = schedules ?? [];
   const completedCount = allWorkouts.filter((w) => w.is_completed).length;
   const totalCount = allWorkouts.length;
@@ -399,7 +666,7 @@ export default function SchedulePage() {
                     dayWorkouts.map((w) => (
                       <button
                         key={w.id}
-                        onClick={() => setSelectedWorkout(w)}
+                        onClick={() => setSelectedWorkoutId(w.id)}
                         className={cn(
                           'w-full text-left rounded-xl px-2 py-2 text-[10px] leading-tight transition-all border',
                           w.is_completed
@@ -419,8 +686,8 @@ export default function SchedulePage() {
                         {w.scheduled_time && (
                           <p className="text-slate-500 mt-0.5">{formatTime(w.scheduled_time)}</p>
                         )}
-                        {w.plan_day?.name && (
-                          <p className="text-slate-500 mt-0.5 truncate">Focus: {w.plan_day.name}</p>
+                        {w.scheduled_exercises.length > 0 && (
+                          <p className="text-slate-500 mt-0.5">{w.scheduled_exercises.length} bài tập</p>
                         )}
                       </button>
                     ))
@@ -433,15 +700,12 @@ export default function SchedulePage() {
 
         {/* Bottom row */}
         <div className="grid grid-cols-3 gap-4">
-          {/* Recommendation card */}
           <Link
             href="/workouts"
             className="col-span-2 relative rounded-2xl overflow-hidden min-h-[140px] group"
           >
-            {/* Dark gradient background */}
             <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-slate-900 to-[#1a1b2e]" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-            {/* Decorative pattern */}
             <div className="absolute inset-0 opacity-10">
               <div className="absolute top-4 right-4 w-20 h-20 rounded-full bg-blue-500 blur-2xl" />
               <div className="absolute bottom-4 right-12 w-16 h-16 rounded-full bg-purple-500 blur-2xl" />
@@ -455,7 +719,6 @@ export default function SchedulePage() {
             </div>
           </Link>
 
-          {/* Weekly goal card */}
           <div className="rounded-2xl bg-white/4 border border-white/8 p-4 flex flex-col justify-between">
             <div className="flex items-center gap-2 mb-3">
               <div className="w-8 h-8 rounded-xl bg-yellow-500/15 border border-yellow-500/20 flex items-center justify-center">
@@ -465,7 +728,6 @@ export default function SchedulePage() {
               </div>
               <p className="text-sm font-bold text-white">{t.schedule.weeklyGoal}</p>
             </div>
-
             <div className="space-y-3">
               <div>
                 <div className="flex items-center justify-between mb-1">
@@ -479,7 +741,6 @@ export default function SchedulePage() {
                   />
                 </div>
               </div>
-
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs text-slate-500">{t.schedule.activeDays}</span>
@@ -507,7 +768,7 @@ export default function SchedulePage() {
       {selectedWorkout && (
         <WorkoutDetail
           workout={selectedWorkout}
-          onClose={() => setSelectedWorkout(null)}
+          onClose={() => setSelectedWorkoutId(null)}
           onDeleted={handleDeleted}
           onToggleComplete={() =>
             toggleCompleteMutation.mutate({
@@ -515,6 +776,7 @@ export default function SchedulePage() {
               is_completed: !selectedWorkout.is_completed,
             })
           }
+          onExercisesChanged={invalidateSchedule}
         />
       )}
     </div>

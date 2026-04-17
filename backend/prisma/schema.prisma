@@ -101,11 +101,12 @@ model Exercise {
   created_by       String?          @db.Uuid
   created_at       DateTime         @default(now())
   deleted_at       DateTime?
-  exercise_muscles ExerciseMuscle[]
-  creator          User?            @relation(fields: [created_by], references: [id])
-  personal_records PersonalRecord[]
-  plan_exercises   PlanExercise[]
-  session_sets     SessionSet[]
+  exercise_muscles    ExerciseMuscle[]
+  creator             User?               @relation(fields: [created_by], references: [id])
+  personal_records    PersonalRecord[]
+  plan_exercises      PlanExercise[]
+  session_sets        SessionSet[]
+  scheduled_exercises ScheduledExercise[]
 
   @@map("exercises")
 }
@@ -183,13 +184,33 @@ model ScheduledWorkout {
   reminder_sent  Boolean          @default(false)
   created_at     DateTime         @default(now())
   updated_at     DateTime?        @updatedAt
-  plan_day       PlanDay?         @relation(fields: [plan_day_id], references: [id])
-  plan           WorkoutPlan?     @relation(fields: [plan_id], references: [id])
-  user           User             @relation(fields: [user_id], references: [id])
-  sessions       WorkoutSession[]
+  plan_day            PlanDay?            @relation(fields: [plan_day_id], references: [id])
+  plan                WorkoutPlan?        @relation(fields: [plan_id], references: [id])
+  user                User                @relation(fields: [user_id], references: [id])
+  sessions            WorkoutSession[]
+  scheduled_exercises ScheduledExercise[]
 
   @@index([scheduled_date])
   @@map("scheduled_workouts")
+}
+
+model ScheduledExercise {
+  id           String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  scheduled_id String           @db.Uuid
+  exercise_id  String           @db.Uuid
+  sets         Int              @default(3)
+  reps         Int              @default(10)
+  weight_kg    Float?
+  order_index  Int              @default(0)
+  notes        String?
+  created_at   DateTime         @default(now())
+  updated_at   DateTime?        @updatedAt
+
+  scheduled_workout ScheduledWorkout @relation(fields: [scheduled_id], references: [id], onDelete: Cascade)
+  exercise          Exercise         @relation(fields: [exercise_id], references: [id])
+
+  @@index([scheduled_id])
+  @@map("scheduled_exercises")
 }
 
 model WorkoutSession {

@@ -21,3 +21,24 @@ export const updateScheduleSchema = z.object({
   scheduled_time: z.string().regex(timeRegex).optional(),
   is_completed: z.boolean().optional(),
 });
+
+export const addScheduledExerciseSchema = z.object({
+  exercise_id: z.string().uuid(),
+  sets: z.number().int().min(1).max(20).default(3),
+  reps: z.number().int().min(1).max(100).default(10),
+  weight_kg: z.number().min(0).max(1000).optional(),
+  order_index: z.number().int().min(0).optional(),
+  notes: z.string().max(500).optional(),
+});
+
+export const updateScheduledExerciseSchema = z.object({
+  sets: z.number().int().min(1).max(20).optional(),
+  reps: z.number().int().min(1).max(100).optional(),
+  weight_kg: z.number().min(0).max(1000).optional(),
+  order_index: z.number().int().min(0).optional(),
+  notes: z.string().max(500).optional(),
+});
+
+export const todayScheduleSchema = z.object({
+  date: z.string().regex(dateRegex, 'Use format YYYY-MM-DD').optional(),
+});

@@ -23,6 +23,22 @@ interface AiInsights {
   metrics?: { streak?: number };
 }
 
+interface PlannedEx {
+  id: string;
+  exercise_id: string;
+  sets: number;
+  reps: number;
+  weight_kg: number | null;
+  exercise: { id: string; name: string; primary_muscle: string; equipment: string };
+}
+
+interface TodaySchedule {
+  id: string;
+  name: string | null;
+  is_completed: boolean;
+  scheduled_exercises: PlannedEx[];
+}
+
 function durationMins(start: string, end: string | null) {
   if (!end) return null;
   return Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000);
@@ -72,6 +88,46 @@ export default function WorkoutsPage() {
   });
 
   const streak = insightsData?.metrics?.streak ?? 0;
+
+  // Today's scheduled plan
+  const todayDateStr = new Date().toISOString().slice(0, 10);
+  const { data: todaySchedules } = useQuery({
+    queryKey: queryKeys.schedule.today(todayDateStr),
+    queryFn: () =>
+      api
+        .get<{ data: TodaySchedule[] }>(`/schedule/today?date=${todayDateStr}`)
+        .then((r) => r.data.data),
+  });
+  const todayPlan = todaySchedules?.find((s) => !s.is_completed) ?? todaySchedules?.[0] ?? null;
+
+  const handleStartFromPlan = async (plan: TodaySchedule) => {
+    setStarting(true);
+    try {
+      const res = await api.post<{ data: { id: string; name: string | null; started_at: string } }>(
+        '/workouts/sessions',
+        { name: plan.name ?? 'Kế Hoạch Hôm Nay', scheduled_id: plan.id },
+      );
+      const s = res.data.data;
+      startSession({
+        id: s.id,
+        name: s.name ?? 'Kế Hoạch Hôm Nay',
+        startedAt: s.started_at,
+        scheduledId: plan.id,
+        plannedExercises: plan.scheduled_exercises.map((ex) => ({
+          id: ex.id,
+          exerciseId: ex.exercise_id,
+          exerciseName: ex.exercise.name,
+          primaryMuscle: ex.exercise.primary_muscle,
+          sets: ex.sets,
+          reps: ex.reps,
+          weightKg: ex.weight_kg,
+        })),
+      });
+      router.push('/workouts/session');
+    } finally {
+      setStarting(false);
+    }
+  };
 
   const handleStartSession = async () => {
     setStarting(true);
@@ -156,6 +212,50 @@ export default function WorkoutsPage() {
             </div>
             <span className="text-xs font-semibold text-blue-400">{t.workouts.resume} →</span>
           </Link>
+        )}
+
+        {/* ── Today's Plan ────────────────────────────────────────── */}
+        {todayPlan && todayPlan.scheduled_exercises.length > 0 && (
+          <div className="rounded-2xl border border-violet-500/25 bg-violet-600/5 overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-violet-500/15">
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-violet-400" />
+                <p className="text-xs font-black text-violet-400 uppercase tracking-widest">KẾ HOẠCH HÔM NAY</p>
+              </div>
+              {!activeSession && (
+                <button
+                  onClick={() => handleStartFromPlan(todayPlan)}
+                  disabled={starting}
+                  className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-violet-500 disabled:opacity-50 transition-colors"
+                >
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                  BẮT ĐẦU
+                </button>
+              )}
+            </div>
+            <div className="px-5 py-3">
+              <p className="text-sm font-bold text-white mb-3">
+                {todayPlan.name ?? 'Kế hoạch hôm nay'}
+              </p>
+              <div className="space-y-2">
+                {todayPlan.scheduled_exercises.map((ex, idx) => (
+                  <div key={ex.id} className="flex items-center gap-3">
+                    <span className="text-[10px] font-black text-violet-500 w-4 shrink-0">{idx + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-white font-medium truncate">{ex.exercise.name}</p>
+                      <p className="text-xs text-slate-500 capitalize">{ex.exercise.primary_muscle.replace('_', ' ')}</p>
+                    </div>
+                    <span className="text-xs font-bold text-slate-400 shrink-0">
+                      {ex.sets} × {ex.reps}
+                      {ex.weight_kg != null ? ` @ ${ex.weight_kg}kg` : ''}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         )}
 
         {/* ── Main grid ───────────────────────────────────────────── */}

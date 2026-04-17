@@ -1,21 +1,38 @@
 import { prisma } from '../config/database';
 
+const exerciseInclude = {
+  scheduled_exercises: {
+    orderBy: { order_index: 'asc' as const },
+    include: {
+      exercise: { select: { id: true, name: true, primary_muscle: true, equipment: true } },
+    },
+  },
+};
+
+const planInclude = {
+  plan_day: { select: { id: true, name: true, day_of_week: true } },
+  plan: { select: { id: true, name: true } },
+};
+
 export async function listSchedule(userId: string, from: string, to: string) {
-  const schedules = await prisma.scheduledWorkout.findMany({
+  return prisma.scheduledWorkout.findMany({
     where: {
       user_id: userId,
-      scheduled_date: {
-        gte: new Date(from),
-        lte: new Date(to),
-      },
+      scheduled_date: { gte: new Date(from), lte: new Date(to) },
     },
     orderBy: [{ scheduled_date: 'asc' }, { scheduled_time: 'asc' }],
-    include: {
-      plan_day: { select: { id: true, name: true, day_of_week: true } },
-      plan: { select: { id: true, name: true } },
-    },
+    include: { ...planInclude, ...exerciseInclude },
   });
-  return schedules;
+}
+
+export async function getTodaySchedule(userId: string, date?: string) {
+  const target = date ? new Date(date) : new Date();
+  target.setHours(0, 0, 0, 0);
+  return prisma.scheduledWorkout.findMany({
+    where: { user_id: userId, scheduled_date: target },
+    orderBy: { scheduled_time: 'asc' },
+    include: { ...planInclude, ...exerciseInclude },
+  });
 }
 
 export async function createSchedule(
@@ -27,14 +44,12 @@ export async function createSchedule(
     scheduled_time?: string;
   },
 ) {
-  // Build scheduled_time as a DateTime (use a fixed date for time-only storage)
   let scheduledTime: Date | undefined;
   if (data.scheduled_time) {
     const [hours, minutes] = data.scheduled_time.split(':').map(Number);
     scheduledTime = new Date(1970, 0, 1, hours, minutes);
   }
 
-  // If plan_day_id given, verify it's accessible and derive plan_id
   let planId: string | undefined;
   if (data.plan_day_id) {
     const day = await prisma.planDay.findFirst({
@@ -58,10 +73,7 @@ export async function createSchedule(
       scheduled_date: new Date(data.scheduled_date),
       ...(scheduledTime && { scheduled_time: scheduledTime }),
     },
-    include: {
-      plan_day: { select: { id: true, name: true, day_of_week: true } },
-      plan: { select: { id: true, name: true } },
-    },
+    include: { ...planInclude, ...exerciseInclude },
   });
 }
 
@@ -96,10 +108,7 @@ export async function updateSchedule(
       ...(scheduledTime && { scheduled_time: scheduledTime }),
       ...(data.is_completed !== undefined && { is_completed: data.is_completed }),
     },
-    include: {
-      plan_day: { select: { id: true, name: true, day_of_week: true } },
-      plan: { select: { id: true, name: true } },
-    },
+    include: { ...planInclude, ...exerciseInclude },
   });
 }
 
@@ -111,4 +120,118 @@ export async function deleteSchedule(id: string, userId: string) {
     throw err;
   }
   await prisma.scheduledWorkout.delete({ where: { id } });
+}
+
+// ─── ScheduledExercise CRUD ───────────────────────────────────────────────────
+
+async function verifyOwnership(scheduledId: string, userId: string) {
+  const schedule = await prisma.scheduledWorkout.findFirst({
+    where: { id: scheduledId, user_id: userId },
+  });
+  if (!schedule) {
+    const err = new Error('Scheduled workout not found');
+    (err as Error & { code: string }).code = 'NOT_FOUND';
+    throw err;
+  }
+  return schedule;
+}
+
+export async function addScheduledExercise(
+  scheduledId: string,
+  userId: string,
+  data: {
+    exercise_id: string;
+    sets: number;
+    reps: number;
+    weight_kg?: number;
+    order_index?: number;
+    notes?: string;
+  },
+) {
+  await verifyOwnership(scheduledId, userId);
+
+  const exercise = await prisma.exercise.findUnique({ where: { id: data.exercise_id } });
+  if (!exercise) {
+    const err = new Error('Exercise not found');
+    (err as Error & { code: string }).code = 'NOT_FOUND';
+    throw err;
+  }
+
+  let orderIndex = data.order_index;
+  if (orderIndex === undefined) {
+    const last = await prisma.scheduledExercise.findFirst({
+      where: { scheduled_id: scheduledId },
+      orderBy: { order_index: 'desc' },
+    });
+    orderIndex = last ? last.order_index + 1 : 0;
+  }
+
+  return prisma.scheduledExercise.create({
+    data: {
+      scheduled_id: scheduledId,
+      exercise_id: data.exercise_id,
+      sets: data.sets,
+      reps: data.reps,
+      ...(data.weight_kg !== undefined && { weight_kg: data.weight_kg }),
+      order_index: orderIndex,
+      ...(data.notes && { notes: data.notes }),
+    },
+    include: {
+      exercise: { select: { id: true, name: true, primary_muscle: true, equipment: true } },
+    },
+  });
+}
+
+export async function updateScheduledExercise(
+  scheduledId: string,
+  entryId: string,
+  userId: string,
+  data: {
+    sets?: number;
+    reps?: number;
+    weight_kg?: number;
+    order_index?: number;
+    notes?: string;
+  },
+) {
+  await verifyOwnership(scheduledId, userId);
+  const entry = await prisma.scheduledExercise.findFirst({
+    where: { id: entryId, scheduled_id: scheduledId },
+  });
+  if (!entry) {
+    const err = new Error('Scheduled exercise not found');
+    (err as Error & { code: string }).code = 'NOT_FOUND';
+    throw err;
+  }
+
+  return prisma.scheduledExercise.update({
+    where: { id: entryId },
+    data: {
+      ...(data.sets !== undefined && { sets: data.sets }),
+      ...(data.reps !== undefined && { reps: data.reps }),
+      ...(data.weight_kg !== undefined && { weight_kg: data.weight_kg }),
+      ...(data.order_index !== undefined && { order_index: data.order_index }),
+      ...(data.notes !== undefined && { notes: data.notes }),
+    },
+    include: {
+      exercise: { select: { id: true, name: true, primary_muscle: true, equipment: true } },
+    },
+  });
+}
+
+export async function removeScheduledExercise(
+  scheduledId: string,
+  entryId: string,
+  userId: string,
+) {
+  await verifyOwnership(scheduledId, userId);
+  const entry = await prisma.scheduledExercise.findFirst({
+    where: { id: entryId, scheduled_id: scheduledId },
+  });
+  if (!entry) {
+    const err = new Error('Scheduled exercise not found');
+    (err as Error & { code: string }).code = 'NOT_FOUND';
+    throw err;
+  }
+  await prisma.scheduledExercise.delete({ where: { id: entryId } });
 }

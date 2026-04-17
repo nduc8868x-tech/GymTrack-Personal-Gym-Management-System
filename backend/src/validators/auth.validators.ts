@@ -39,6 +39,7 @@ export const onboardingSchema = z.object({
   gender: z.enum(['male', 'female', 'other']).optional(),
   birthdate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   height_cm: z.number().positive().max(300).optional(),
+  current_weight: z.number().positive().max(500).optional(),
   goal_type: z.enum(['muscle_gain', 'fat_loss', 'strength', 'general_health']).optional(),
   target_weight: z.number().positive().optional(),
   target_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),

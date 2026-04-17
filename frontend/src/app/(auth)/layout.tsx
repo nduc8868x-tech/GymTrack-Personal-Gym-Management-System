@@ -1,10 +1,10 @@
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex bg-[#0a0a0f]">
+    <div className="min-h-screen flex bg-[#111223]">
       {/* Left Hero Panel */}
       <div className="hidden lg:flex lg:w-1/2 xl:w-3/5 relative overflow-hidden flex-col">
         {/* Background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0d1117] via-[#0f172a] to-[#020617]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#161829] via-[#0f172a] to-[#0d0f20]" />
 
         {/* Animated grid pattern */}
         <div
@@ -72,7 +72,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
       {/* Right Form Panel */}
       <div className="w-full lg:w-1/2 xl:w-2/5 flex items-center justify-center p-6 sm:p-10 relative">
-        <div className="absolute inset-0 bg-[#0d0d14]" />
+        <div className="absolute inset-0 bg-[#1a1b2e]" />
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-600/30 to-transparent lg:hidden" />
 
         <div className="relative z-10 w-full max-w-md">

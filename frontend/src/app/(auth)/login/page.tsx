@@ -193,7 +193,7 @@ export default function LoginPage() {
           <span className="w-full border-t border-white/10" />
         </div>
         <div className="relative flex justify-center">
-          <span className="bg-[#0d0d14] px-3 text-xs text-slate-600 uppercase tracking-widest">
+          <span className="bg-[#1a1b2e] px-3 text-xs text-slate-600 uppercase tracking-widest">
             {t.common.or}
           </span>
         </div>

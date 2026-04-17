@@ -133,7 +133,7 @@ export default function FoodLogPage() {
     : null;
 
   return (
-    <div className="min-h-screen bg-[#0d0d14] text-white">
+    <div className="min-h-screen bg-[#1a1b2e] text-white">
       {/* Header */}
       <div className="flex items-center gap-3 px-6 py-4 border-b border-white/5">
         <button

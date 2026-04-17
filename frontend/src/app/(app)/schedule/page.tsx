@@ -74,7 +74,7 @@ function AddWorkoutForm({ date, onClose, onSaved }: { date: string; onClose: () 
 
   return (
     <div className="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-[#13131f] rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
+      <div className="w-full max-w-sm bg-[#1e1f35] rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
           <div>
             <h2 className="font-bold text-sm text-white">{t.schedule.addToSchedule}</h2>
@@ -157,7 +157,7 @@ function WorkoutDetail({
 
   return (
     <div className="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-[#13131f] rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
+      <div className="w-full max-w-sm bg-[#1e1f35] rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
           <div className="min-w-0 flex-1">
             <h2 className="font-bold text-sm text-white truncate">{workout.name ?? t.workouts.defaultName}</h2>
@@ -297,7 +297,7 @@ export default function SchedulePage() {
   const totalCount = allWorkouts.length;
 
   return (
-    <div className="min-h-screen bg-[#0d0d14] text-white">
+    <div className="min-h-screen bg-[#1a1b2e] text-white">
       {/* Top bar */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
         <div>
@@ -439,7 +439,7 @@ export default function SchedulePage() {
             className="col-span-2 relative rounded-2xl overflow-hidden min-h-[140px] group"
           >
             {/* Dark gradient background */}
-            <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-slate-900 to-[#0d0d14]" />
+            <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-slate-900 to-[#1a1b2e]" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
             {/* Decorative pattern */}
             <div className="absolute inset-0 opacity-10">

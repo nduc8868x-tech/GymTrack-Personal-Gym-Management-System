@@ -233,7 +233,7 @@ export default function DashboardPage() {
   const monthName = now.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' });
 
   return (
-    <div className="min-h-screen bg-[#0d0d14] text-white">
+    <div className="min-h-screen bg-[#1a1b2e] text-white">
       {/* Top bar */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
         <span className="text-blue-400 font-bold text-lg tracking-tight">GymTrack</span>

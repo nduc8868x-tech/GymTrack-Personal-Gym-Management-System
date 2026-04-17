@@ -138,7 +138,7 @@ export default function AiCoachPage() {
   const recoveryPct = Math.max(20, Math.min(100, 84 - streak * 2));
 
   return (
-    <div className="min-h-screen bg-[#0d0d14] text-white">
+    <div className="min-h-screen bg-[#1a1b2e] text-white">
       {/* ── Header ─────────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-6 py-5 border-b border-white/5">
         <div>

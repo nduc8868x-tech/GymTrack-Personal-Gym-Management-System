@@ -136,7 +136,7 @@ export default function NutritionPage() {
   }, {} as Record<FoodLog['meal_type'], FoodLog[]>);
 
   return (
-    <div className="min-h-screen bg-[#0d0d14] text-white">
+    <div className="min-h-screen bg-[#1a1b2e] text-white">
       {/* ── Top nav bar ─────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-6 py-3 border-b border-white/5">
         <div className="flex items-center gap-6">
@@ -361,7 +361,7 @@ export default function NutritionPage() {
       </div>
 
       {/* ── Bottom CTA (mobile) ──────────────────────────────── */}
-      <div className="fixed bottom-0 left-0 right-0 md:hidden px-4 pb-4 pt-2 bg-gradient-to-t from-[#0d0d14] to-transparent">
+      <div className="fixed bottom-0 left-0 right-0 md:hidden px-4 pb-4 pt-2 bg-gradient-to-t from-[#1a1b2e] to-transparent">
         <Link
           href={`/nutrition/log?date=${date}`}
           className="flex items-center justify-center gap-2 w-full rounded-xl bg-blue-600 hover:bg-blue-500 px-4 py-3.5 text-sm font-bold text-white transition-colors shadow-xl shadow-blue-600/20"

@@ -19,7 +19,7 @@ export default function BottomNav() {
   ];
 
   return (
-    <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-[#0d0d14] border-t border-white/5">
+    <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-[#1a1b2e] border-t border-white/5">
       <div className="flex">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href + '/');

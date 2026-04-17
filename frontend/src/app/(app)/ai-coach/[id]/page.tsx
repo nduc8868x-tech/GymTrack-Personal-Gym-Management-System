@@ -224,9 +224,9 @@ export default function AiChatPage() {
   const displayMessages = localMessages;
 
   return (
-    <div className="flex flex-col h-screen max-h-screen bg-[#0d0d14]">
+    <div className="flex flex-col h-screen max-h-screen bg-[#1a1b2e]">
       {/* Top bar */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-white/5 bg-[#0d0d14] flex-shrink-0">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-white/5 bg-[#1a1b2e] flex-shrink-0">
         <button
           onClick={() => router.push('/ai-coach')}
           className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
@@ -340,7 +340,7 @@ export default function AiChatPage() {
       </div>
 
       {/* Input bar */}
-      <div className="flex-shrink-0 border-t border-white/5 bg-[#0d0d14] px-4 py-4">
+      <div className="flex-shrink-0 border-t border-white/5 bg-[#1a1b2e] px-4 py-4">
         <div className="flex items-end gap-3 rounded-2xl border border-white/10 bg-white/4 px-4 py-3 focus-within:border-blue-600/40 focus-within:bg-white/6 transition-all">
           <textarea
             ref={textareaRef}

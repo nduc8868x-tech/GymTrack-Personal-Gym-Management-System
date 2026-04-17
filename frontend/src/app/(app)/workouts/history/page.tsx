@@ -79,7 +79,7 @@ export default function WorkoutHistoryPage() {
   const groups = groupByDate(sessions);
 
   return (
-    <div className="min-h-screen bg-[#0d0d14] text-white">
+    <div className="min-h-screen bg-[#1a1b2e] text-white">
       {/* Top bar */}
       <div className="flex items-center gap-4 px-6 py-4 border-b border-white/5">
         <Link

@@ -45,7 +45,7 @@ export default function Sidebar() {
   const initials = user?.name?.charAt(0).toUpperCase() ?? '?';
 
   return (
-    <aside className="hidden md:flex flex-col w-48 min-h-screen bg-[#0d0d14] border-r border-white/5">
+    <aside className="hidden md:flex flex-col w-48 min-h-screen bg-[#1a1b2e] border-r border-white/5">
       {/* Logo / Brand */}
       <div className="px-5 pt-6 pb-5">
         <div className="flex items-center gap-2 mb-0.5">

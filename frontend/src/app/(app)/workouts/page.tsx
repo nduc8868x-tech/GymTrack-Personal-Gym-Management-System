@@ -101,7 +101,7 @@ export default function WorkoutsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#0d0d14] text-white">
+    <div className="min-h-screen bg-[#1a1b2e] text-white">
       {/* Top bar */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
         <div className="relative w-64">
@@ -193,7 +193,7 @@ export default function WorkoutsPage() {
                       onChange={(e) => setSessionName(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && !starting && handleStartSession()}
                       className={cn(
-                        'w-full rounded-xl bg-[#0a0a10] border border-white/8 pl-11 pr-4 py-4 text-sm text-white placeholder:text-slate-600',
+                        'w-full rounded-xl bg-[#111223] border border-white/8 pl-11 pr-4 py-4 text-sm text-white placeholder:text-slate-600',
                         'outline-none transition-all',
                         'focus:border-blue-500/40 focus:ring-1 focus:ring-blue-500/20',
                       )}

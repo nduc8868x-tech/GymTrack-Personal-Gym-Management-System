@@ -1,8 +1,8 @@
 # GymTrack — Implementation Workflow
 ## Sprint Plan & Development Guidelines
 
-> **Version**: 1.2
-> **Date**: 2026-04-17
+> **Version**: 1.3
+> **Date**: 2026-04-18
 > **Status**: Approved
 
 ---
@@ -116,21 +116,42 @@
 ⬜ 6.6  FE: Streaming partial chunks, loading indicator
 ```
 
-### SPRINT 7 — Polish & Deploy
+### SPRINT 6.5 — Schedule ↔ Workout Integration
 
 ```
-⬜ 7.1  Responsive: check all screens at 375px mobile viewport
-⬜ 7.2  Error states: network error, 404, session expired, API fallback
-⬜ 7.3  Empty states: verify all screens
-⬜ 7.4  Write integration tests for key APIs (BE):
+✅ 6.5.1  DB: model ScheduledExercise — per-user, per-day exercise entries (sets/reps/weight)
+✅ 6.5.2  BE: validators + service CRUD cho ScheduledExercise
+✅ 6.5.3  BE: GET /schedule/today + POST/PUT/DELETE /schedule/:id/exercises
+✅ 6.5.4  FE: queryKeys.schedule refactor thành object có sub-keys (list, today)
+✅ 6.5.5  FE: Zustand workoutStore mở rộng — PlannedExercise + scheduledId trong ActiveSession
+✅ 6.5.6  FE: Schedule page — ScheduledExerciseManager (thêm/sửa/xóa bài tập trong lịch)
+✅ 6.5.7  FE: Workout page — section "Kế Hoạch Hôm Nay" + handleStartFromPlan
+⬜ 6.5.8  FE: Session page — panel kế hoạch tham chiếu (tap bài → tự điền form, progress tracker)
+```
+
+### SPRINT 7 — UI Polish & Deploy
+
+```
+✅ 7.1  Dark theme color palette — thay thế #0d0d14 (quá tối) bằng palette dịu hơn:
+        background #1a1b2e, card #1e1f35, auth outer #111223
+✅ 7.2  Toàn bộ UI chuyển sang tiếng Việt — xóa tất cả hardcoded English strings trên mọi trang
+        (workouts, session, nutrition, ai-coach, dashboard, progress, schedule, auth layout)
+✅ 7.3  Exercise Library page — rewrite UI: dark theme cards, muscle badge màu per-group,
+        filter chips active state theo màu nhóm cơ, form thêm bài tập với label tiếng Việt
+✅ 7.4  Nutrition Log page — dịch macro labels (Carbs → Tinh bột, Fat → Chất béo),
+        custom food form labels tiếng Việt
+⬜ 7.5  Responsive: kiểm tra tất cả màn hình tại 375px mobile viewport
+⬜ 7.6  Error states: network error, 404, session expired, API fallback
+⬜ 7.7  Empty states: kiểm tra tất cả màn hình
+⬜ 7.8  Write integration tests for key APIs (BE):
         - Auth: register, login, refresh token, forgot/reset password
         - Workout: create session, log set, auto-update personal_records
         - Nutrition: log food, macro calculation
         - AI: mock Groq API response, verify context-building logic
-⬜ 7.5  Setup CI/CD: GitHub Actions (lint + test on PR)
-⬜ 7.6  Deploy BE to Render + đổi DATABASE_URL sang Neon (production) trong environment variables
-⬜ 7.7  Deploy FE to Vercel + configure environment variables
-⬜ 7.8  Smoke test entire happy path on production
+⬜ 7.9  Setup CI/CD: GitHub Actions (lint + test on PR)
+⬜ 7.10 Deploy BE to Render + đổi DATABASE_URL sang Neon (production) trong environment variables
+⬜ 7.11 Deploy FE to Vercel + configure environment variables
+⬜ 7.12 Smoke test entire happy path on production
 ```
 
 ---
@@ -144,5 +165,5 @@
 
 ---
 
-*Document version: 1.2 — 2026-04-17*
+*Document version: 1.3 — 2026-04-18*
 *Status: Approved*

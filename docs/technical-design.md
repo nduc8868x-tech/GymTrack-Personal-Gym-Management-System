@@ -1,8 +1,8 @@
 # GymTrack — Technical Design
 ## Tech Stack, Architecture & Module Structure
 
-> **Version**: 1.2
-> **Date**: 2026-04-17
+> **Version**: 1.3
+> **Date**: 2026-04-18
 > **Status**: Approved
 
 ---
@@ -12,7 +12,7 @@
 | Layer | Technology | Rationale |
 |-------|-----------|-----------|
 | **Frontend** | Next.js 15 (App Router) | SSR/SSG, file-based routing, large ecosystem, excellent Vercel deployment |
-| **UI** | Tailwind CSS + shadcn/ui | Utility-first CSS; shadcn provides accessible, non-lock-in components out of the box |
+| **UI** | Tailwind CSS + custom dark theme | Utility-first CSS; toàn bộ app dùng dark theme cố định (không toggle light/dark). CSS variables định nghĩa trong `globals.css` với palette Catppuccin Mocha-inspired (`--background: 237 25% 14%` tức `#1a1b2e`). Không dùng shadcn component nữa — các trang đã được rewrite với Tailwind thuần |
 | **Charts** | Recharts | Native React (no canvas), lightweight, easily customizable for progress/workout charts |
 | **Forms** | react-hook-form + Zod | Form state management + validation schema; Zod shared with BE for consistency |
 | **State** | Zustand + TanStack React Query | Zustand for client state (auth, active session); React Query for server state + caching + refetch |
@@ -50,8 +50,8 @@
 │                BACKEND (Node.js + Express + TS)              │
 │  ┌────────────────┐  ┌─────────────┐  ┌──────────────────┐  │
 │  │   Auth         │  │ Controllers │  │   AI Service     │  │
-│  │ JWT + Brevo   │  │  + Routes   │  │  (Gemini API)    │  │
-│  │ (email service)│  │             │  │                  │  │
+│  │ JWT + Gmail   │  │  + Routes   │  │  (Groq API       │  │
+│  │ (email service)│  │             │  │  Llama 4 Scout)  │  │
 │  └────────────────┘  └──────┬──────┘  └──────────────────┘  │
 │                             │                                │
 │  ┌──────────────────────────▼─────────────────────────────┐  │
@@ -70,11 +70,11 @@
 └────────────────────────────────────────────────────────────┘
 
 Backend calls external services (not the DB):
-┌───────────────┐  ┌──────────────────┐  ┌──────────────┐
-│  ImageKit     │  │ Open Food Facts  │  │   Brevo      │
-│ (upload &     │  │ (food search,    │  │ (email:      │
-│  store photos)│  │  nutrition data) │  │  reset/remind│
-└───────────────┘  └──────────────────┘  └──────────────┘
+┌───────────────┐  ┌──────────────────┐  ┌──────────────────────────┐  ┌──────────┐
+│  ImageKit     │  │ Open Food Facts  │  │   Gmail SMTP (nodemailer)│  │  Brevo   │
+│ (upload &     │  │ (food search,    │  │   primary email service  │  │ optional │
+│  store photos)│  │  nutrition data) │  │   (reset pwd / reminder) │  │ fallback │
+└───────────────┘  └──────────────────┘  └──────────────────────────┘  └──────────┘
 ```
 
 ### Request Flows
@@ -152,7 +152,7 @@ gymtrack/
 │   │   │   ├── utils.ts                  # cn(), formatDate()...
 │   │   │   ├── constants.ts              # API_URL, muscle groups
 │   │   │   ├── queryKeys.ts              # React Query key factory
-│   │   │   └── i18n/                     # Internationalisation (vi + en)
+│   │   │   └── i18n/                     # i18n context — locked to Vietnamese (locale cố định 'vi')
 │   │   ├── stores/                       # Zustand stores (client state only)
 │   │   │   ├── authStore.ts              # User info, isAuthenticated
 │   │   │   ├── workoutStore.ts           # Active session state (persisted)
@@ -220,5 +220,22 @@ gymtrack/
 
 ---
 
-*Document version: 1.2 — 2026-04-17*
+---
+
+## UI Design System
+
+| Concern | Decision |
+| ------- | -------- |
+| **Theme** | Dark-only. `globals.css` định nghĩa CSS variables dạng HSL dưới `:root`, không có `.dark` class. Toàn bộ app render tối mặc định |
+| **Base background** | `#1a1b2e` (HSL 237 25% 14%) — warm dark indigo, inspired by Catppuccin Mocha |
+| **Card / surface** | `bg-white/4` với `border-white/8` — semi-transparent layers tạo độ sâu |
+| **Interactive hover** | `hover:bg-white/6 hover:border-white/12` |
+| **Primary color** | Blue-600 (`#2563eb`) — buttons, active states, progress bars |
+| **Text hierarchy** | `text-white` (primary) → `text-slate-300` (secondary) → `text-slate-500` (muted) → `text-slate-700` (disabled) |
+| **Accent colors** | Emerald (success), Amber (warning/streak), Red (destructive), per-muscle badge colors |
+| **Language** | 100% tiếng Việt — `I18nContext` hardcoded `locale: 'vi'`, `changeLocale` là no-op. Tất cả hardcoded English strings đã được thay bằng tiếng Việt |
+| **Typography** | Inter font (Google Fonts subset latin) |
+| **Border radius** | `--radius: 0.75rem` → 12px base; cards dùng `rounded-2xl` (16px) |
+
+*Document version: 1.3 — 2026-04-18*
 *Status: Approved*

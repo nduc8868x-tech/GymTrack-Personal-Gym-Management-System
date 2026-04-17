@@ -212,10 +212,10 @@ export default function FoodLogPage() {
             {preview && (
               <div className="grid grid-cols-4 gap-2">
                 {[
-                  { label: 'Kcal',    value: preview.calories, unit: '',  color: 'text-white' },
-                  { label: 'Protein', value: preview.protein,  unit: 'g', color: 'text-blue-400' },
-                  { label: 'Carbs',   value: preview.carbs,    unit: 'g', color: 'text-amber-400' },
-                  { label: 'Fat',     value: preview.fat,      unit: 'g', color: 'text-red-400' },
+                  { label: 'Kcal',       value: preview.calories, unit: '',  color: 'text-white' },
+                  { label: 'Protein',   value: preview.protein,  unit: 'g', color: 'text-blue-400' },
+                  { label: 'Tinh bột',  value: preview.carbs,    unit: 'g', color: 'text-amber-400' },
+                  { label: 'Chất béo',  value: preview.fat,      unit: 'g', color: 'text-red-400' },
                 ].map(({ label, value, unit, color }) => (
                   <div key={label} className="rounded-xl bg-white/5 border border-white/8 px-2 py-2.5 text-center">
                     <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">{label}</p>
@@ -322,10 +322,10 @@ export default function FoodLogPage() {
 
                   <div className="grid grid-cols-2 gap-3">
                     {([
-                      { key: 'calories_per100g', label: 'Calories (per 100g) *', required: true },
-                      { key: 'protein_per100g',  label: 'Protein (g)',           required: false },
-                      { key: 'carbs_per100g',    label: 'Carbs (g)',             required: false },
-                      { key: 'fat_per100g',      label: 'Fat (g)',               required: false },
+                      { key: 'calories_per100g', label: 'Calories (/ 100g) *', required: true },
+                      { key: 'protein_per100g',  label: 'Protein (g)',         required: false },
+                      { key: 'carbs_per100g',    label: 'Tinh bột (g)',        required: false },
+                      { key: 'fat_per100g',      label: 'Chất béo (g)',        required: false },
                     ] as const).map(({ key, label, required }) => (
                       <div key={key}>
                         <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{label}</label>

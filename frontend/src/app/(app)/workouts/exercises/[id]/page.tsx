@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 import { cn, formatDate } from '@/lib/utils';
@@ -64,10 +64,11 @@ export default function ExerciseDetailPage() {
     queryKey: queryKeys.exercises.detail(id),
     queryFn: () =>
       api.get<{ data: ExerciseDetail }>(`/exercises/${id}`).then((r) => r.data.data),
-    onSuccess: (data: ExerciseDetail) => {
-      if (notes === null) setNotes(data.description ?? '');
-    },
-  } as Parameters<typeof useQuery>[0]);
+  });
+
+  useEffect(() => {
+    if (exercise && notes === null) setNotes(exercise.description ?? '');
+  }, [exercise]);
 
   const uploadImageMutation = useMutation({
     mutationFn: async (file: File) => {
@@ -184,8 +185,8 @@ export default function ExerciseDetailPage() {
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
 
             {exercise.image_url ? (
-              <div className="relative rounded-2xl overflow-hidden border border-white/8 aspect-video bg-white/4">
-                <img src={exercise.image_url} alt={exercise.name} className="w-full h-full object-cover" />
+              <div className="relative rounded-2xl overflow-hidden border border-white/8 aspect-square bg-white/4">
+                <img src={exercise.image_url} alt={exercise.name} className="w-full h-full object-contain" />
                 <div className="absolute top-3 right-3 flex gap-2">
                   <button
                     onClick={() => fileInputRef.current?.click()}

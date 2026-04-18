@@ -223,7 +223,8 @@ export default function WorkoutsPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 py-6 max-w-5xl space-y-6">
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-6 py-6 max-w-5xl mx-auto space-y-6">
         {/* ── Heading ─────────────────────────────────────────────── */}
         <div>
           <h1 className="text-5xl font-black text-white tracking-tight leading-none mb-2">
@@ -534,6 +535,7 @@ export default function WorkoutsPage() {
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

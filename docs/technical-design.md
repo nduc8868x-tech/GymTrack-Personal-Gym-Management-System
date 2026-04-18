@@ -1,7 +1,7 @@
 # GymTrack — Technical Design
 ## Tech Stack, Architecture & Module Structure
 
-> **Version**: 1.5
+> **Version**: 1.6
 > **Date**: 2026-04-18
 > **Status**: Approved
 
@@ -214,7 +214,8 @@ gymtrack/
 │   │   └── app.ts                        # Express app setup + route mounting
 │   ├── prisma/
 │   │   ├── schema.prisma                 # 21 models, PostgreSQL (incl. ScheduledExercise)
-│   │   ├── seed.ts                       # Seed 100+ exercises into DB
+│   │   ├── seed.ts                       # Seed 100+ exercises (tên tiếng Việt) vào DB
+│   │   ├── rename-exercises.ts           # One-time script: UPDATE tên bài tập cũ → tiếng Việt
 │   │   └── migrations/                   # Prisma migration history
 │   └── __tests__/                        # Test directory (in progress)
 ```
@@ -234,7 +235,8 @@ gymtrack/
 | **Primary color** | Blue-600 (`#2563eb`) — buttons, active states, progress bars |
 | **Text hierarchy** | `text-white` (primary) → `text-slate-300` (secondary) → `text-slate-500` (muted) → `text-slate-700` (disabled) |
 | **Accent colors** | Emerald (success), Amber (warning/streak), Red (destructive), Violet (plan/schedule panel), per-muscle badge colors |
-| **Language** | 100% tiếng Việt — `I18nContext` hardcoded `locale: 'vi'`, `changeLocale` là no-op. Tất cả hardcoded English strings đã được thay bằng tiếng Việt |
+| **Language** | 100% tiếng Việt — `I18nContext` hardcoded `locale: 'vi'`, `changeLocale` là no-op. Tất cả hardcoded English strings đã được thay bằng tiếng Việt. Tên bài tập (~92) trong DB cũng đã dịch sang tiếng Việt |
+| **Viewport layout** | No-scroll — toàn bộ 7 trang chính (dashboard, workouts, schedule, nutrition, progress, ai-coach, settings) dùng `h-screen flex flex-col overflow-hidden`. Top bar: `flex-none`. Content: `flex-1 overflow-y-auto`. Không có outer scrollbar; danh sách dài cuộn nội bộ |
 | **Typography** | Inter font (Google Fonts subset latin) |
 | **Border radius** | `--radius: 0.75rem` → 12px base; cards dùng `rounded-2xl` (16px) |
 
@@ -282,5 +284,5 @@ interface TodaySchedule {
 }
 ```
 
-*Document version: 1.5 — 2026-04-18*
+*Document version: 1.6 — 2026-04-18*
 *Status: Approved*

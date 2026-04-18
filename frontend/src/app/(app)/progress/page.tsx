@@ -211,7 +211,8 @@ export default function ProgressPage() {
         </Link>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 py-5 max-w-3xl space-y-4">
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-6 py-5 max-w-3xl mx-auto space-y-4">
         {/* Quick stats */}
         <div className="grid grid-cols-3 gap-3">
           {/* Weight card */}
@@ -390,6 +391,7 @@ export default function ProgressPage() {
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

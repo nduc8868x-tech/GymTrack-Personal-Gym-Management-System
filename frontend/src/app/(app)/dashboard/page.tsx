@@ -263,7 +263,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 py-5 max-w-6xl space-y-5">
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-6 py-5 max-w-6xl mx-auto space-y-5">
         {/* ── Hero banner ─────────────────────────────────────────── */}
         <div className="relative rounded-2xl overflow-hidden h-52 border border-white/8">
           {/* Background */}
@@ -480,6 +481,7 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

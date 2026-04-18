@@ -74,6 +74,26 @@ router.post('/', validate(createExerciseSchema), async (req: Request, res: Respo
   return sendSuccess(res, exercise, undefined, 201);
 });
 
+// ─── PATCH /exercises/:id ─────────────────────────────────────────────────────
+router.patch('/:id', async (req: Request, res: Response) => {
+  try {
+    const { description } = req.body as { description?: string };
+    if (description === undefined) {
+      return sendError(res, 400, 'BAD_REQUEST', 'description is required');
+    }
+    const exercise = await exercisesService.updateExerciseDescription(
+      req.params.id as string,
+      req.user!.id,
+      description,
+    );
+    return sendSuccess(res, exercise);
+  } catch (err) {
+    const e = err as Error & { code?: string };
+    if (e.code === 'NOT_FOUND') return sendError(res, 404, 'NOT_FOUND', 'Exercise not found');
+    throw err;
+  }
+});
+
 // ─── DELETE /exercises/:id ────────────────────────────────────────────────────
 router.delete('/:id', async (req: Request, res: Response) => {
   try {

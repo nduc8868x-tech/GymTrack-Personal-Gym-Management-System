@@ -111,7 +111,21 @@ export async function deleteCustomExercise(id: string, userId: string) {
   });
 }
 
-// ─── Image helpers ──────────────────────────────────────────────────────────
+// ─── Notes helper ───────────────────────────────────────────────────────────
+
+export async function updateExerciseDescription(id: string, userId: string, description: string) {
+  const exercise = await prisma.exercise.findFirst({
+    where: { id, deleted_at: null, OR: [{ is_custom: false }, { created_by: userId }] },
+  });
+  if (!exercise) {
+    const err = new Error('Exercise not found');
+    (err as Error & { code: string }).code = 'NOT_FOUND';
+    throw err;
+  }
+  return prisma.exercise.update({ where: { id }, data: { description } });
+}
+
+// ─── Image helpers ───────────────────────────────────────────────────────────
 
 export async function updateExerciseImage(
   exerciseId: string,

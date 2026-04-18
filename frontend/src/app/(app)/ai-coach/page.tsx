@@ -157,7 +157,8 @@ export default function AiCoachPage() {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 py-5 max-w-5xl space-y-4">
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-6 py-5 max-w-5xl mx-auto space-y-4">
         {/* ── New conversation modal ───────────────────────────── */}
         {showNew && (
           <div className="rounded-2xl bg-white/4 border border-white/8 p-5 space-y-4">
@@ -442,6 +443,7 @@ export default function AiCoachPage() {
             </div>
           </div>
         </div>
+      </div>
       </div>
 
       {/* ── Floating chat button ─────────────────────────────────── */}

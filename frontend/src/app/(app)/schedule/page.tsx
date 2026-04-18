@@ -602,7 +602,8 @@ export default function SchedulePage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5 max-w-5xl">
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-6 py-5 space-y-5 max-w-5xl mx-auto">
         {/* Calendar grid */}
         <div className="grid grid-cols-7 gap-2">
           {weekDays.map((day, i) => {
@@ -758,6 +759,7 @@ export default function SchedulePage() {
             </div>
           </div>
         </div>
+      </div>
       </div>
 
       {/* Modals */}

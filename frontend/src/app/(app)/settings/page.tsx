@@ -187,7 +187,8 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 py-6 max-w-2xl space-y-7">
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-6 py-6 max-w-2xl mx-auto space-y-7">
 
         {/* ── Thông tin cá nhân ──────────────────────────────── */}
         <Section title={t.profile.sections.profile}>
@@ -440,6 +441,7 @@ export default function SettingsPage() {
         </Section>
 
         <div className="pb-20 md:pb-6" />
+      </div>
       </div>
     </div>
   );

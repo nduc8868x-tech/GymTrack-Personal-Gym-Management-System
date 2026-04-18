@@ -182,7 +182,8 @@ export default function NutritionPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 py-5 max-w-4xl space-y-4">
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-6 py-5 max-w-4xl mx-auto space-y-4">
         {/* ── Page header + date nav ───────────────────────────── */}
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-black text-white tracking-tight">{t.nutrition.title}</h1>
@@ -358,6 +359,7 @@ export default function NutritionPage() {
             <p className="text-xs text-slate-400 leading-relaxed">{tip.body}</p>
           </div>
         </div>
+      </div>
       </div>
 
       {/* ── Bottom CTA (mobile) ──────────────────────────────── */}

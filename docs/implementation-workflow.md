@@ -1,7 +1,7 @@
 # GymTrack — Implementation Workflow
 ## Sprint Plan & Development Guidelines
 
-> **Version**: 1.5
+> **Version**: 1.6
 > **Date**: 2026-04-18
 > **Status**: Approved
 
@@ -161,18 +161,25 @@
 ✅ 7.9  Workout page — quick links (Lịch Sử Tập, Thư Viện Bài Tập, Chuỗi Tuần) đổi từ
         vertical stack → horizontal 3-column grid (sm:grid-cols-3); Chuỗi Tuần compact
         (streak số ngày hiển thị inline, progress bar màu amber)
-⬜ 7.10 Responsive: kiểm tra tất cả màn hình tại 375px mobile viewport
-⬜ 7.11 Error states: network error, 404, session expired, API fallback
-⬜ 7.12 Empty states: kiểm tra tất cả màn hình
-⬜ 7.13 Write integration tests for key APIs (BE):
+✅ 7.10 No-scroll layout — toàn bộ 7 trang chính vừa gọn 1 viewport, không có outer scrollbar:
+        - Pattern: root div dùng h-screen flex flex-col overflow-hidden
+        - Top bar: flex-none
+        - Content wrapper: flex-1 overflow-y-auto (scroll nội bộ khi content dài)
+        - Trang đã áp dụng: dashboard, nutrition, progress, ai-coach, workouts, schedule, settings
+✅ 7.11 Exercise names — dịch toàn bộ ~92 tên bài tập sang tiếng Việt trong seed.ts;
+        tạo script rename-exercises.ts để UPDATE bản ghi đã có trong DB
+⬜ 7.12 Responsive: kiểm tra tất cả màn hình tại 375px mobile viewport
+⬜ 7.13 Error states: network error, 404, session expired, API fallback
+⬜ 7.14 Empty states: kiểm tra tất cả màn hình
+⬜ 7.15 Write integration tests for key APIs (BE):
         - Auth: register, login, refresh token, forgot/reset password
         - Workout: create session, log set, auto-update personal_records
         - Nutrition: log food, macro calculation
         - AI: mock Groq API response, verify context-building logic
-⬜ 7.14 Setup CI/CD: GitHub Actions (lint + test on PR)
-⬜ 7.15 Deploy BE to Render + đổi DATABASE_URL sang Neon (production) trong environment variables
-⬜ 7.16 Deploy FE to Vercel + configure environment variables
-⬜ 7.17 Smoke test entire happy path on production
+⬜ 7.16 Setup CI/CD: GitHub Actions (lint + test on PR)
+⬜ 7.17 Deploy BE to Render + đổi DATABASE_URL sang Neon (production) trong environment variables
+⬜ 7.18 Deploy FE to Vercel + configure environment variables
+⬜ 7.19 Smoke test entire happy path on production
 ```
 
 ---
@@ -186,5 +193,5 @@
 
 ---
 
-*Document version: 1.5 — 2026-04-18*
+*Document version: 1.6 — 2026-04-18*
 *Status: Approved*

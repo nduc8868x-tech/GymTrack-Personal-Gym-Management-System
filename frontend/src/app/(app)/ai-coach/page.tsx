@@ -138,9 +138,9 @@ export default function AiCoachPage() {
   const recoveryPct = Math.max(20, Math.min(100, 84 - streak * 2));
 
   return (
-    <div className="min-h-screen bg-[#1a1b2e] text-white">
+    <div className="h-screen bg-[#1a1b2e] text-white flex flex-col overflow-hidden">
       {/* ── Header ─────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-6 py-5 border-b border-white/5">
+      <div className="flex-none flex items-center justify-between px-6 py-5 border-b border-white/5">
         <div>
           <h1 className="text-2xl font-black text-white tracking-tight">{t.aiCoach.title}</h1>
           <p className="text-xs text-slate-500 mt-0.5">{t.aiCoach.subtitle}</p>
@@ -157,7 +157,7 @@ export default function AiCoachPage() {
         </button>
       </div>
 
-      <div className="px-6 py-5 max-w-5xl space-y-5">
+      <div className="flex-1 overflow-y-auto px-6 py-5 max-w-5xl space-y-4">
         {/* ── New conversation modal ───────────────────────────── */}
         {showNew && (
           <div className="rounded-2xl bg-white/4 border border-white/8 p-5 space-y-4">

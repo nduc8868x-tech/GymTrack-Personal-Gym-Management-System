@@ -196,9 +196,9 @@ export default function ProgressPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#1a1b2e] text-white">
+    <div className="h-screen bg-[#1a1b2e] text-white flex flex-col overflow-hidden">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+      <div className="flex-none flex items-center justify-between px-6 py-4 border-b border-white/5">
         <h1 className="text-lg font-bold text-white">{t.progress.title}</h1>
         <Link
           href="/progress/measurements"
@@ -211,7 +211,7 @@ export default function ProgressPage() {
         </Link>
       </div>
 
-      <div className="px-6 py-6 max-w-3xl space-y-5">
+      <div className="flex-1 overflow-y-auto px-6 py-5 max-w-3xl space-y-4">
         {/* Quick stats */}
         <div className="grid grid-cols-3 gap-3">
           {/* Weight card */}

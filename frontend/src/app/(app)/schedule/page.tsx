@@ -564,9 +564,9 @@ export default function SchedulePage() {
   const totalCount = allWorkouts.length;
 
   return (
-    <div className="min-h-screen bg-[#1a1b2e] text-white">
+    <div className="h-screen bg-[#1a1b2e] text-white flex flex-col overflow-hidden">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+      <div className="flex-none flex items-center justify-between px-6 py-4 border-b border-white/5">
         <div>
           <h1 className="text-lg font-bold text-white">{t.schedule.title}</h1>
           <div className="flex items-center gap-1.5 mt-0.5">
@@ -602,7 +602,7 @@ export default function SchedulePage() {
         </div>
       </div>
 
-      <div className="px-6 py-5 space-y-5 max-w-5xl">
+      <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5 max-w-5xl">
         {/* Calendar grid */}
         <div className="grid grid-cols-7 gap-2">
           {weekDays.map((day, i) => {

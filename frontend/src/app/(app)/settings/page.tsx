@@ -168,9 +168,9 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#1a1b2e] text-white">
+    <div className="h-screen bg-[#1a1b2e] text-white flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-5 border-b border-white/5">
+      <div className="flex-none flex items-center justify-between px-6 py-5 border-b border-white/5">
         <div>
           <h1 className="text-2xl font-black text-white tracking-tight">{t.profile.title}</h1>
           <p className="text-xs text-slate-500 mt-0.5">{profile?.email}</p>
@@ -187,7 +187,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="px-6 py-6 max-w-2xl space-y-7">
+      <div className="flex-1 overflow-y-auto px-6 py-6 max-w-2xl space-y-7">
 
         {/* ── Thông tin cá nhân ──────────────────────────────── */}
         <Section title={t.profile.sections.profile}>

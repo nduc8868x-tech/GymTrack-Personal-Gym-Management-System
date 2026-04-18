@@ -233,9 +233,9 @@ export default function DashboardPage() {
   const monthName = now.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' });
 
   return (
-    <div className="min-h-screen bg-[#1a1b2e] text-white">
+    <div className="h-screen bg-[#1a1b2e] text-white flex flex-col overflow-hidden">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+      <div className="flex-none flex items-center justify-between px-6 py-4 border-b border-white/5">
         <span className="text-blue-400 font-bold text-lg tracking-tight">GymTrack</span>
         <div className="flex items-center gap-3">
           <div className="relative w-64">
@@ -263,7 +263,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="px-6 py-6 space-y-6 max-w-6xl">
+      <div className="flex-1 overflow-y-auto px-6 py-5 max-w-6xl space-y-5">
         {/* ── Hero banner ─────────────────────────────────────────── */}
         <div className="relative rounded-2xl overflow-hidden h-52 border border-white/8">
           {/* Background */}

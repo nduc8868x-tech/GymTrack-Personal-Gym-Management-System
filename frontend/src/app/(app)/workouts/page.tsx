@@ -192,9 +192,9 @@ export default function WorkoutsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#1a1b2e] text-white">
+    <div className="h-screen bg-[#1a1b2e] text-white flex flex-col overflow-hidden">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+      <div className="flex-none flex items-center justify-between px-6 py-4 border-b border-white/5">
         <div className="relative w-64">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -223,7 +223,7 @@ export default function WorkoutsPage() {
         </div>
       </div>
 
-      <div className="px-6 py-6 max-w-5xl space-y-6">
+      <div className="flex-1 overflow-y-auto px-6 py-6 max-w-5xl space-y-6">
         {/* ── Heading ─────────────────────────────────────────────── */}
         <div>
           <h1 className="text-5xl font-black text-white tracking-tight leading-none mb-2">

@@ -136,9 +136,9 @@ export default function NutritionPage() {
   }, {} as Record<FoodLog['meal_type'], FoodLog[]>);
 
   return (
-    <div className="min-h-screen bg-[#1a1b2e] text-white">
+    <div className="h-screen bg-[#1a1b2e] text-white flex flex-col overflow-hidden">
       {/* ── Top nav bar ─────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-white/5">
+      <div className="flex-none flex items-center justify-between px-6 py-3 border-b border-white/5">
         <div className="flex items-center gap-6">
           <span className="text-blue-400 font-bold text-base tracking-tight">GymTrack</span>
           <nav className="hidden md:flex items-center gap-5">
@@ -182,7 +182,7 @@ export default function NutritionPage() {
         </div>
       </div>
 
-      <div className="px-6 py-6 max-w-4xl space-y-5">
+      <div className="flex-1 overflow-y-auto px-6 py-5 max-w-4xl space-y-4">
         {/* ── Page header + date nav ───────────────────────────── */}
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-black text-white tracking-tight">{t.nutrition.title}</h1>

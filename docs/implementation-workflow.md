@@ -1,7 +1,7 @@
 # GymTrack — Implementation Workflow
 ## Sprint Plan & Development Guidelines
 
-> **Version**: 1.6
+> **Version**: 1.7
 > **Date**: 2026-04-18
 > **Status**: Approved
 
@@ -168,18 +168,33 @@
         - Trang đã áp dụng: dashboard, nutrition, progress, ai-coach, workouts, schedule, settings
 ✅ 7.11 Exercise names — dịch toàn bộ ~92 tên bài tập sang tiếng Việt trong seed.ts;
         tạo script rename-exercises.ts để UPDATE bản ghi đã có trong DB
-⬜ 7.12 Responsive: kiểm tra tất cả màn hình tại 375px mobile viewport
-⬜ 7.13 Error states: network error, 404, session expired, API fallback
-⬜ 7.14 Empty states: kiểm tra tất cả màn hình
-⬜ 7.15 Write integration tests for key APIs (BE):
+✅ 7.12 Fix scrollbar position — scrollbar xuất hiện giữa màn do max-w-* và flex-1 overflow-y-auto
+        nằm cùng div; fix bằng cách tách thành 2 div lồng:
+        - Outer: flex-1 overflow-y-auto (full width → scrollbar sát cạnh phải màn)
+        - Inner: px-6 py-X max-w-Xkl mx-auto (giới hạn content, căn giữa)
+        - Áp dụng cho tất cả 7 trang chính + layout.tsx (h-screen overflow-hidden)
+✅ 7.13 Exercise Library — rewrite UI dạng lưới ô vuông:
+        - Grid 3×3 (9 bài/trang), mỗi ô: aspect-square gradient theo nhóm cơ + icon/ảnh + badge
+        - Phân trang client-side: nút ← số trang →, reset trang khi đổi search/filter
+        - No-scroll layout với flex-1 overflow-y-auto bao toàn bộ grid + pagination
+✅ 7.14 Exercise Detail page — rewrite toàn bộ dark theme + tính năng mới:
+        - Bỏ nút "Bắt đầu tập với bài này"
+        - Lưu ảnh: UI cải thiện (placeholder rõ hơn, nút Thay ảnh/Xóa); ảnh tự cập nhật thư viện
+        - Ghi chú: textarea editable, nút "Lưu" chỉ hiện khi có thay đổi
+        - BE: thêm PATCH /exercises/:id + updateExerciseDescription() service
+        - Lịch sử kỷ lục cá nhân giữ nguyên, dark theme đồng bộ
+⬜ 7.15 Responsive: kiểm tra tất cả màn hình tại 375px mobile viewport
+⬜ 7.16 Error states: network error, 404, session expired, API fallback
+⬜ 7.17 Empty states: kiểm tra tất cả màn hình
+⬜ 7.18 Write integration tests for key APIs (BE):
         - Auth: register, login, refresh token, forgot/reset password
         - Workout: create session, log set, auto-update personal_records
         - Nutrition: log food, macro calculation
         - AI: mock Groq API response, verify context-building logic
-⬜ 7.16 Setup CI/CD: GitHub Actions (lint + test on PR)
-⬜ 7.17 Deploy BE to Render + đổi DATABASE_URL sang Neon (production) trong environment variables
-⬜ 7.18 Deploy FE to Vercel + configure environment variables
-⬜ 7.19 Smoke test entire happy path on production
+⬜ 7.19 Setup CI/CD: GitHub Actions (lint + test on PR)
+⬜ 7.20 Deploy BE to Render + đổi DATABASE_URL sang Neon (production) trong environment variables
+⬜ 7.21 Deploy FE to Vercel + configure environment variables
+⬜ 7.22 Smoke test entire happy path on production
 ```
 
 ---
@@ -193,5 +208,5 @@
 
 ---
 
-*Document version: 1.6 — 2026-04-18*
+*Document version: 1.7 — 2026-04-18*
 *Status: Approved*

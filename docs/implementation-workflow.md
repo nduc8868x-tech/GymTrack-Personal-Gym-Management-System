@@ -180,8 +180,10 @@
 ✅ 7.14 Exercise Detail page — rewrite toàn bộ dark theme + tính năng mới:
         - Bỏ nút "Bắt đầu tập với bài này"
         - Lưu ảnh: UI cải thiện (placeholder rõ hơn, nút Thay ảnh/Xóa); ảnh tự cập nhật thư viện
+        - Ảnh hiển thị dạng ô vuông (aspect-square + object-contain) thay vì cắt xén (object-cover)
         - Ghi chú: textarea editable, nút "Lưu" chỉ hiện khi có thay đổi
         - BE: thêm PATCH /exercises/:id + updateExerciseDescription() service
+        - Fix: bỏ onSuccess khỏi useQuery (không tương thích TanStack Query v5), dùng useEffect
         - Lịch sử kỷ lục cá nhân giữ nguyên, dark theme đồng bộ
 ⬜ 7.15 Responsive: kiểm tra tất cả màn hình tại 375px mobile viewport
 ⬜ 7.16 Error states: network error, 404, session expired, API fallback

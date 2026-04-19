@@ -1,8 +1,8 @@
 # GymTrack — Implementation Workflow
 ## Sprint Plan & Development Guidelines
 
-> **Version**: 1.7
-> **Date**: 2026-04-18
+> **Version**: 1.8
+> **Date**: 2026-04-19
 > **Status**: Approved
 
 ---
@@ -113,7 +113,13 @@
 ✅ 6.3  BE: GET /ai/insights (automated weekly/monthly analysis)
 ✅ 6.4  FE: AI Coach Chat screen (conversation history)
 ✅ 6.5  BE: Groq API timeout handling (20s) + fallback error response
-⬜ 6.6  FE: Streaming partial chunks, loading indicator
+✅ 6.6  FE: AI chat — fix lịch sử chat mất sau khi thoát: bỏ onSuccess (không tương thích TanStack Query v5),
+        thay bằng useEffect sync conv.messages → localMessages khi không đang stream
+✅ 6.7  BE: Enforce tiếng Việt cho toàn bộ AI responses:
+        - SYSTEM_PROMPT: "Always respond in Vietnamese" thay "Respond in same language as user"
+        - getInsights prompt viết lại bằng tiếng Việt
+        - Fallback messages (timeout, lỗi, no data) → tiếng Việt
+⬜ 6.8  FE: Streaming partial chunks, loading indicator
 ```
 
 ### SPRINT 6.5 — Schedule ↔ Workout Integration
@@ -210,5 +216,5 @@
 
 ---
 
-*Document version: 1.7 — 2026-04-18*
+*Document version: 1.8 — 2026-04-19*
 *Status: Approved*

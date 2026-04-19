@@ -1,8 +1,8 @@
 # GymTrack — Technical Design
 ## Tech Stack, Architecture & Module Structure
 
-> **Version**: 1.7
-> **Date**: 2026-04-18
+> **Version**: 1.8
+> **Date**: 2026-04-19
 > **Status**: Approved
 
 ---
@@ -179,7 +179,7 @@ gymtrack/
 │   │   │   ├── notifications.ts
 │   │   │   └── ai.ts
 │   │   ├── services/
-│   │   │   ├── ai.service.ts             # Groq API integration (Llama 4 Scout)
+│   │   │   ├── ai.service.ts             # Groq API integration (Llama 4 Scout); SYSTEM_PROMPT enforce tiếng Việt; insights prompt tiếng Việt
 │   │   │   ├── auth.service.ts           # Auth business logic
 │   │   │   ├── exercises.service.ts      # Exercise CRUD + image upload
 │   │   │   ├── workouts.service.ts       # Session + sets + PR tracking
@@ -235,7 +235,7 @@ gymtrack/
 | **Primary color** | Blue-600 (`#2563eb`) — buttons, active states, progress bars |
 | **Text hierarchy** | `text-white` (primary) → `text-slate-300` (secondary) → `text-slate-500` (muted) → `text-slate-700` (disabled) |
 | **Accent colors** | Emerald (success), Amber (warning/streak), Red (destructive), Violet (plan/schedule panel), per-muscle badge colors |
-| **Language** | 100% tiếng Việt — `I18nContext` hardcoded `locale: 'vi'`, `changeLocale` là no-op. Tất cả hardcoded English strings đã được thay bằng tiếng Việt. Tên bài tập (~92) trong DB cũng đã dịch sang tiếng Việt |
+| **Language** | 100% tiếng Việt — `I18nContext` hardcoded `locale: 'vi'`, `changeLocale` là no-op. Tất cả hardcoded English strings đã được thay bằng tiếng Việt. Tên bài tập (~92) trong DB cũng đã dịch sang tiếng Việt. AI responses: `SYSTEM_PROMPT` enforce "Always respond in Vietnamese"; `getInsights` prompt viết bằng tiếng Việt; fallback messages tiếng Việt |
 | **Viewport layout** | No-scroll — 7 trang chính + layout.tsx dùng `h-screen overflow-hidden`. Content tách 2 div: outer `flex-1 overflow-y-auto` (full width, scrollbar sát cạnh phải màn) + inner `px-6 max-w-* mx-auto` (giới hạn width, căn giữa) |
 | **Exercise Library** | Grid 3×3 ô vuông (aspect-square), gradient màu theo nhóm cơ, badge góc trên phải. Phân trang client-side 9 bài/trang. Filter + search reset trang về 1 |
 | **Exercise Detail** | Dark theme đồng bộ. Tính năng: Lưu ảnh (upload → ImageKit, cập nhật thư viện ngay), Ghi chú (PATCH /exercises/:id → lưu description), Kỷ lục cá nhân. Bỏ nút "Bắt đầu tập" |
@@ -286,5 +286,5 @@ interface TodaySchedule {
 }
 ```
 
-*Document version: 1.7 — 2026-04-18*
+*Document version: 1.8 — 2026-04-19*
 *Status: Approved*

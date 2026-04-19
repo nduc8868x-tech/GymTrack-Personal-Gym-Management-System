@@ -111,7 +111,7 @@ const SYSTEM_PROMPT = `You are GymTrack AI Coach — a knowledgeable, encouragin
 You have access to the user's fitness data provided below. Use it to give personalised advice.
 Keep answers concise and actionable. Use bullet points when listing items.
 Never prescribe medical treatments. If asked about injuries or health conditions, advise seeing a professional.
-Respond in the same language the user writes in.`;
+IMPORTANT: Always respond in Vietnamese (Tiếng Việt), regardless of what language the user writes in.`;
 
 // ─── Conversations ────────────────────────────────────────────────────────────
 
@@ -257,8 +257,8 @@ export async function streamMessage(
       message: (err as Error).message,
     });
     const fallback = isTimeout
-      ? "I'm taking too long to respond. Please try asking again in a moment."
-      : "I'm having trouble responding right now. Please try again later.";
+      ? 'Phản hồi mất quá nhiều thời gian. Vui lòng thử lại sau giây lát.'
+      : 'Đang gặp sự cố khi phản hồi. Vui lòng thử lại sau.';
 
     fullResponse = fallback;
     res.write(`data: ${JSON.stringify({ text: fallback, error: true })}\n\n`);
@@ -302,7 +302,7 @@ export async function getInsights(userId: string, period: 'week' | 'month') {
   if (sessions.length === 0) {
     return {
       period,
-      summary: `No workouts logged in the past ${days} days. Start tracking to get personalised insights!`,
+      summary: `Không có buổi tập nào trong ${days} ngày qua. Hãy bắt đầu tập luyện để nhận phân tích cá nhân hoá!`,
       metrics: {},
     };
   }
@@ -337,7 +337,7 @@ export async function getInsights(userId: string, period: 'week' | 'month') {
   let summary = '';
   try {
     const groq = getGroq();
-    const prompt = `You are a fitness coach. Analyse the following ${period}ly workout data and provide a short (3-5 bullet points) encouraging summary with actionable tips.\n\nData:\n${JSON.stringify(metrics, null, 2)}\n\nKeep it concise and motivating.`;
+    const prompt = `Bạn là huấn luyện viên thể hình. Hãy phân tích dữ liệu tập luyện ${period === 'week' ? 'tuần' : 'tháng'} sau và đưa ra nhận xét ngắn gọn (3-5 gạch đầu dòng) với lời khích lệ và lời khuyên thực tế. Trả lời bằng tiếng Việt.\n\nDữ liệu:\n${JSON.stringify(metrics, null, 2)}\n\nHãy ngắn gọn và truyền động lực.`;
 
     type NonStreamCompletion = Awaited<ReturnType<typeof groq.chat.completions.create>> & { choices: { message: { content: string } }[] };
 
@@ -353,7 +353,7 @@ export async function getInsights(userId: string, period: 'week' | 'month') {
     summary = result.choices[0]?.message?.content ?? '';
   } catch (err) {
     console.error('[AI getInsights error]', (err as Error).message);
-    summary = `In the past ${days} days you completed ${metrics.workouts_count} workout${metrics.workouts_count !== 1 ? 's' : ''} with a total volume of ${metrics.total_volume_kg} kg. Keep it up!`;
+    summary = `Trong ${days} ngày qua bạn đã hoàn thành ${metrics.workouts_count} buổi tập với tổng khối lượng ${metrics.total_volume_kg} kg. Tiếp tục phát huy!`;
   }
 
   return { period, summary, metrics };

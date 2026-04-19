@@ -125,10 +125,14 @@ export default function AiChatPage() {
     queryKey: queryKeys.ai.messages(id),
     queryFn: () =>
       api.get<{ data: Conversation }>(`/ai/conversations/${id}/messages`).then((r) => r.data.data),
-    onSuccess: (data: Conversation) => {
-      setLocalMessages(data.messages);
-    },
-  } as Parameters<typeof useQuery>[0]);
+  });
+
+  // Sync DB messages → localMessages (skip during streaming to preserve optimistic state)
+  useEffect(() => {
+    if (conv?.messages && !isStreaming) {
+      setLocalMessages(conv.messages);
+    }
+  }, [conv, isStreaming]);
 
   // Scroll to bottom on new messages / streaming
   useEffect(() => {

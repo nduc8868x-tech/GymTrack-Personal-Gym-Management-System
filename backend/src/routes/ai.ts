@@ -75,6 +75,32 @@ router.post('/conversations/:id/messages', async (req: Request, res: Response) =
   }
 });
 
+// ─── Analyze food image ───────────────────────────────────────────────────────
+
+const analyzeFoodSchema = z.object({
+  image: z.string().min(1),
+});
+
+router.post('/analyze-food', async (req: Request, res: Response) => {
+  if (!process.env.GROQ_API_KEY) {
+    return sendError(res, 503, 'SERVICE_UNAVAILABLE', 'AI chưa được cấu hình');
+  }
+  const parsed = analyzeFoodSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return sendError(res, 400, 'VALIDATION_ERROR', 'image là bắt buộc');
+  }
+  try {
+    const result = await aiService.analyzeFoodImage(parsed.data.image);
+    return sendSuccess(res, result);
+  } catch (err) {
+    const e = err as Error & { code?: string };
+    if (e.code === 'ANALYSIS_FAILED') {
+      return sendError(res, 422, 'ANALYSIS_FAILED', e.message);
+    }
+    return sendError(res, 503, 'AI_ERROR', 'Không thể phân tích ảnh, vui lòng thử lại');
+  }
+});
+
 // ─── Insights ─────────────────────────────────────────────────────────────────
 
 router.get('/insights', async (req: Request, res: Response) => {

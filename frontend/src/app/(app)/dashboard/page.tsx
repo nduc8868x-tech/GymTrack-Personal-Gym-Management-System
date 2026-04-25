@@ -1,8 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
-import { BarChart, Bar, XAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Cell } from 'recharts';
+import { useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { useT } from '@/lib/i18n';
 import { usePageTitle } from '@/hooks/usePageTitle';
@@ -19,6 +21,28 @@ interface Session {
   ended_at: string | null;
   notes: string | null;
   _count: { session_sets: number };
+}
+
+interface NutritionLog {
+  meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  macros: { calories: number; protein_g: number; carbs_g: number; fat_g: number };
+}
+
+interface FoodAnalysisResult {
+  food_name: string;
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  serving_note: string;
+  confidence: 'high' | 'medium' | 'low';
+}
+
+interface NutritionPlan {
+  daily_calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
 }
 
 interface AiInsights {
@@ -68,6 +92,16 @@ function buildFrequencyData(sessions: Session[]) {
   }));
 }
 
+function buildWeekFrequencyData(sessions: Session[]) {
+  const dayLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+  const counts: Record<number, number> = {};
+  sessions.forEach((s) => {
+    const dow = (new Date(s.started_at).getDay() + 6) % 7;
+    counts[dow] = (counts[dow] ?? 0) + 1;
+  });
+  return dayLabels.map((label, i) => ({ day: label, count: counts[i] ?? 0 }));
+}
+
 function formatDuration(started: string, ended: string | null) {
   if (!ended) return '—';
   const mins = Math.round((new Date(ended).getTime() - new Date(started).getTime()) / 60000);
@@ -80,6 +114,241 @@ function timeAgo(dateStr: string, t: { common: { today?: string } }) {
   if (days === 0) return 'HÔM NAY';
   if (days === 1) return 'HÔM QUA';
   return `${days} NGÀY TRƯỚC`;
+}
+
+// ─── Calorie Ring ─────────────────────────────────────────────────────────────
+
+function CalRing({ current, goal }: { current: number; goal: number }) {
+  const pct = goal > 0 ? Math.min(1, current / goal) : 0;
+  const r = 44;
+  const circ = 2 * Math.PI * r;
+  return (
+    <svg width="108" height="108" className="-rotate-90">
+      <circle cx="54" cy="54" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="9" />
+      <circle
+        cx="54" cy="54" r={r} fill="none"
+        stroke="#3b82f6" strokeWidth="9"
+        strokeDasharray={`${pct * circ} ${circ}`}
+        strokeLinecap="round"
+        style={{ transition: 'stroke-dasharray 0.6s ease' }}
+      />
+    </svg>
+  );
+}
+
+// ─── Food Analysis Modal ──────────────────────────────────────────────────────
+
+type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
+const MEAL_OPTS: { key: MealType; icon: string; label: string }[] = [
+  { key: 'breakfast', icon: '🌅', label: 'Sáng'  },
+  { key: 'lunch',     icon: '☀️', label: 'Trưa'  },
+  { key: 'dinner',    icon: '🌙', label: 'Tối'   },
+  { key: 'snack',     icon: '🍎', label: 'Snack' },
+];
+function defaultMeal(): MealType {
+  const h = new Date().getHours();
+  if (h >= 5  && h < 10) return 'breakfast';
+  if (h >= 10 && h < 15) return 'lunch';
+  if (h >= 18 && h < 22) return 'dinner';
+  return 'snack';
+}
+
+function compressImage(file: File, cb: (base64: string) => void) {
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  img.onload = () => {
+    const MAX = 800;
+    const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.width * scale);
+    c.height = Math.round(img.height * scale);
+    c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
+    URL.revokeObjectURL(url);
+    cb(c.toDataURL('image/jpeg', 0.8));
+  };
+  img.src = url;
+}
+
+function FoodAnalysisModal({ date, onLogged, onClose }: {
+  date: string;
+  onLogged: () => void;
+  onClose: () => void;
+}) {
+  const [preview, setPreview]     = useState<string | null>(null);
+  const [result, setResult]       = useState<FoodAnalysisResult | null>(null);
+  const [mealType, setMealType]   = useState<MealType>(defaultMeal());
+  const [logged, setLogged]       = useState(false);
+
+  const { mutate: analyze, isPending: analyzing, error: analyzeError } = useMutation({
+    mutationFn: (image: string) =>
+      api.post<{ data: FoodAnalysisResult }>('/ai/analyze-food', { image }).then((r) => r.data.data),
+    onSuccess: setResult,
+  });
+
+  const { mutate: logFood, isPending: logging, error: logError } = useMutation({
+    mutationFn: async () => {
+      if (!result) return;
+      const food = await api.post<{ data: { id: string } }>('/nutrition/foods', {
+        name: result.food_name,
+        calories_per100g: result.calories,
+        protein_per100g: result.protein_g,
+        carbs_per100g: result.carbs_g,
+        fat_per100g: result.fat_g,
+      }).then((r) => r.data.data);
+      await api.post('/nutrition/logs', {
+        food_id: food.id,
+        meal_type: mealType,
+        quantity_g: 100,
+        logged_at: date,
+      });
+    },
+    onSuccess: () => {
+      setLogged(true);
+      onLogged();
+      setTimeout(onClose, 1400);
+    },
+  });
+
+  const confidenceColor = { high: 'text-emerald-400', medium: 'text-yellow-400', low: 'text-slate-500' } as const;
+  const confidenceLabel = { high: 'Cao', medium: 'Trung bình', low: 'Ước tính' } as const;
+
+  return (
+    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-sm bg-[#1e1f35] rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
+          <div>
+            <h2 className="text-sm font-bold text-white">Phân tích món ăn từ ảnh</h2>
+            <p className="text-[10px] text-slate-500 mt-0.5">AI nhận diện & tự động ghi nhật ký</p>
+          </div>
+          <button onClick={onClose} className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* Success */}
+          {logged ? (
+            <div className="py-8 flex flex-col items-center gap-3 text-center">
+              <div className="w-14 h-14 rounded-full bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center text-2xl">✅</div>
+              <p className="text-sm font-bold text-white">Đã ghi vào nhật ký!</p>
+              <p className="text-xs text-slate-500">{result?.food_name} · {MEAL_OPTS.find(m => m.key === mealType)?.label}</p>
+            </div>
+          ) : (
+            <>
+              {/* Upload zone */}
+              {!result && (
+                <label className={cn('block rounded-xl border-2 border-dashed transition-colors cursor-pointer overflow-hidden', preview ? 'border-blue-500/30' : 'border-white/10 hover:border-white/20')}>
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) compressImage(f, (b64) => { setPreview(b64); setResult(null); }); }} />
+                  {preview ? (
+                    <img src={preview} alt="preview" className="w-full h-44 object-cover" />
+                  ) : (
+                    <div className="h-44 flex flex-col items-center justify-center gap-2 text-slate-500">
+                      <svg className="w-8 h-8 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                      </svg>
+                      <span className="text-xs">Chọn ảnh món ăn</span>
+                    </div>
+                  )}
+                </label>
+              )}
+
+              {/* Result */}
+              {result && (
+                <div className="space-y-3">
+                  <div className="rounded-xl bg-white/5 border border-white/8 p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-bold text-white">{result.food_name}</p>
+                        {result.serving_note && <p className="text-[10px] text-slate-500 mt-0.5">{result.serving_note}</p>}
+                      </div>
+                      <span className={cn('text-[10px] font-semibold shrink-0', confidenceColor[result.confidence])}>
+                        {confidenceLabel[result.confidence]}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {([
+                        { label: 'Calo',    value: result.calories,   unit: 'kcal', color: 'text-blue-400'    },
+                        { label: 'Protein', value: result.protein_g,  unit: 'g',    color: 'text-emerald-400' },
+                        { label: 'Carbs',   value: result.carbs_g,    unit: 'g',    color: 'text-yellow-400'  },
+                        { label: 'Fat',     value: result.fat_g,      unit: 'g',    color: 'text-rose-400'    },
+                      ] as const).map(({ label, value, unit, color }) => (
+                        <div key={label} className="rounded-lg bg-white/5 p-2 text-center">
+                          <p className={cn('text-sm font-black', color)}>{value}</p>
+                          <p className="text-[9px] text-slate-500">{unit}</p>
+                          <p className="text-[9px] text-slate-600">{label}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Meal selector */}
+                  <div>
+                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Ghi vào bữa</p>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {MEAL_OPTS.map(({ key, icon, label }) => (
+                        <button
+                          key={key}
+                          onClick={() => setMealType(key)}
+                          className={cn(
+                            'rounded-xl py-2 text-center transition-all',
+                            mealType === key
+                              ? 'bg-blue-600 border border-blue-500'
+                              : 'bg-white/5 border border-white/8 hover:bg-white/10',
+                          )}
+                        >
+                          <p className="text-base">{icon}</p>
+                          <p className="text-[10px] text-white mt-0.5">{label}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {(analyzeError || logError) && (
+                <p className="text-xs text-rose-400 text-center">{((analyzeError || logError) as Error).message}</p>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-2">
+                {!result ? (
+                  <>
+                    <button
+                      disabled={!preview || analyzing}
+                      onClick={() => preview && analyze(preview)}
+                      className="flex-1 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-violet-500 disabled:opacity-40 transition-colors"
+                    >
+                      {analyzing ? 'Đang phân tích...' : '🔍 Phân tích'}
+                    </button>
+                    {preview && (
+                      <button onClick={() => setPreview(null)} className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-slate-400 hover:text-white transition-colors">
+                        Đổi ảnh
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <button
+                      disabled={logging}
+                      onClick={() => logFood()}
+                      className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-500 disabled:opacity-40 transition-colors"
+                    >
+                      {logging ? 'Đang ghi...' : '✅ Ghi ngay'}
+                    </button>
+                    <button onClick={() => { setResult(null); setPreview(null); }} className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-slate-400 hover:text-white transition-colors">
+                      Thử lại
+                    </button>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
@@ -156,6 +425,10 @@ function ActivityCard({ session }: { session: Session }) {
 export default function DashboardPage() {
   const { user } = useAuthStore();
   const { t } = useT();
+  const qc = useQueryClient();
+  const [freqView, setFreqView] = useState<'week' | 'month'>('month');
+  const [showFoodAnalysis, setShowFoodAnalysis] = useState(false);
+  const today = new Date().toISOString().slice(0, 10);
   usePageTitle('Bảng điều khiển');
   const firstName = user?.name?.split(' ')[0] ?? '';
   const { from: wFrom, to: wTo } = getWeekBounds();
@@ -204,12 +477,19 @@ export default function DashboardPage() {
   });
 
   // Today's nutrition
-  const today = new Date().toISOString().slice(0, 10);
   const { data: nutritionData } = useQuery({
     queryKey: queryKeys.nutrition.logs(today),
     queryFn: () =>
       api
-        .get<{ data: { total_calories: number }[] }>('/nutrition/logs', { params: { date: today } })
+        .get<{ data: NutritionLog[] }>('/nutrition/logs', { params: { date: today } })
+        .then((r) => r.data),
+  });
+
+  const { data: planData } = useQuery({
+    queryKey: queryKeys.nutrition.plan(),
+    queryFn: () =>
+      api
+        .get<{ data: NutritionPlan | null }>('/nutrition/plan')
         .then((r) => r.data),
   });
 
@@ -217,11 +497,32 @@ export default function DashboardPage() {
   const weekSessions = weekData?.data ?? [];
   const monthSessions = monthData?.data ?? [];
   const recentSessions = recentData?.data ?? [];
-  const freqData = buildFrequencyData(monthSessions);
+  const freqData = freqView === 'month'
+    ? buildFrequencyData(monthSessions)
+    : buildWeekFrequencyData(weekSessions);
   const workoutsThisWeek = weekSessions.length;
   const totalVolume = insightsData?.metrics?.totalVolume;
   const streak = insightsData?.metrics?.streak ?? 0;
-  const caloriesToday = nutritionData?.data?.reduce((s: number, l: { total_calories: number }) => s + l.total_calories, 0) ?? 0;
+  const nutritionLogs = nutritionData?.data ?? [];
+  const nutritionTotals = nutritionLogs.reduce(
+    (acc, l) => ({
+      calories: acc.calories + (l.macros?.calories ?? 0),
+      protein:  acc.protein  + (l.macros?.protein_g ?? 0),
+      carbs:    acc.carbs    + (l.macros?.carbs_g ?? 0),
+      fat:      acc.fat      + (l.macros?.fat_g ?? 0),
+    }),
+    { calories: 0, protein: 0, carbs: 0, fat: 0 },
+  );
+  const caloriesToday = Math.round(nutritionTotals.calories);
+  const mealCalories = nutritionLogs.reduce(
+    (acc, l) => { acc[l.meal_type] = (acc[l.meal_type] ?? 0) + Math.round(l.macros?.calories ?? 0); return acc; },
+    { breakfast: 0, lunch: 0, dinner: 0, snack: 0 } as Record<'breakfast' | 'lunch' | 'dinner' | 'snack', number>,
+  );
+  const plan = planData?.data;
+  const goalCalories = plan?.daily_calories ?? 2000;
+  const goalProtein  = plan?.protein_g ?? 150;
+  const goalCarbs    = plan?.carbs_g ?? 200;
+  const goalFat      = plan?.fat_g ?? 65;
 
   // Split AI summary into two tips
   const aiSummary = insightsData?.summary ?? '';
@@ -267,15 +568,14 @@ export default function DashboardPage() {
         <div className="px-6 py-5 max-w-6xl mx-auto space-y-5">
         {/* ── Hero banner ─────────────────────────────────────────── */}
         <div className="relative rounded-2xl overflow-hidden h-52 border border-white/8">
-          {/* Background */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0f1729] via-[#0d1424] to-[#0a0e1a]" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-          {/* Decorative gym silhouette using CSS */}
-          <div className="absolute right-0 bottom-0 w-80 h-full opacity-10"
-            style={{
-              background: 'radial-gradient(ellipse at 80% 60%, rgba(59,130,246,0.3) 0%, transparent 60%)',
-            }}
+          {/* Gym background image */}
+          <div
+            className="absolute inset-0 bg-cover bg-center scale-105"
+            style={{ backgroundImage: "url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1400&q=80&auto=format&fit=crop')" }}
           />
+          {/* Gradient overlays for readability */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0a0e1a]/95 via-[#0a0e1a]/75 to-[#0a0e1a]/20" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
           {/* Content */}
           <div className="relative h-full flex flex-col justify-center px-8">
             <h1 className="text-4xl font-black text-white tracking-tight mb-2">
@@ -349,63 +649,82 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Chart + AI Coach ────────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
           {/* Frequency chart */}
-          <div className="lg:col-span-2 rounded-2xl bg-white/4 border border-white/8 p-5">
-            <div className="flex items-start justify-between mb-4">
+          <div className="lg:col-span-2 rounded-2xl bg-white/5 border border-white/8 p-5">
+            <div className="flex items-start justify-between mb-5">
               <div>
                 <h2 className="text-sm font-bold text-white">{t.dashboard.frequency}</h2>
-                <p className="text-xs text-slate-500 mt-0.5 capitalize">{monthName}</p>
+                <p className="text-xs text-slate-500 mt-0.5 capitalize">
+                  {freqView === 'month' ? monthName : 'Tuần này'}
+                </p>
               </div>
-              <div className="flex gap-1">
-                {['Tuần', 'Tháng'].map((label, i) => (
-                  <span
-                    key={label}
+              <div className="flex gap-1 rounded-xl bg-white/5 border border-white/8 p-1">
+                {(['week', 'month'] as const).map((view) => (
+                  <button
+                    key={view}
+                    onClick={() => setFreqView(view)}
                     className={cn(
-                      'px-2.5 py-1 rounded-lg text-xs font-medium cursor-default',
-                      i === 1
-                        ? 'bg-white/10 text-white'
-                        : 'text-slate-500 hover:text-slate-300',
+                      'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200',
+                      freqView === view
+                        ? 'bg-blue-600 text-white shadow-sm shadow-blue-900/50'
+                        : 'text-slate-400 hover:text-slate-200',
                     )}
                   >
-                    {label}
-                  </span>
+                    {view === 'week' ? 'Tuần' : 'Tháng'}
+                  </button>
                 ))}
               </div>
             </div>
-            {freqData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={180}>
-                <BarChart data={freqData} barCategoryGap="30%">
+            {freqData.some((d) => d.count > 0) ? (
+              <ResponsiveContainer width="100%" height={190}>
+                <BarChart data={freqData} barCategoryGap={freqView === 'week' ? '35%' : '20%'} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+                  <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.04)" strokeDasharray="3 3" />
                   <XAxis
                     dataKey="day"
                     tick={{ fill: '#64748b', fontSize: 10 }}
                     axisLine={false}
                     tickLine={false}
-                    interval={4}
+                    interval={freqView === 'week' ? 0 : 4}
+                  />
+                  <YAxis
+                    allowDecimals={false}
+                    tick={{ fill: '#475569', fontSize: 10 }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickCount={4}
                   />
                   <Tooltip
-                    cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+                    cursor={{ fill: 'rgba(255,255,255,0.04)', radius: 6 }}
                     contentStyle={{
-                      background: '#1e293b',
+                      background: '#0f172a',
                       border: '1px solid rgba(255,255,255,0.1)',
-                      borderRadius: 8,
+                      borderRadius: 10,
                       fontSize: 12,
                       color: '#fff',
+                      padding: '8px 12px',
                     }}
-                    formatter={(v: number) => [`${v} buổi`, '']}
-                    labelFormatter={(l) => `Ngày ${l}`}
+                    labelStyle={{ color: '#fff', fontWeight: 600 }}
+                    itemStyle={{ color: '#fff' }}
+                    formatter={(v: number) => [`${v} buổi tập`, '']}
+                    labelFormatter={(l) => freqView === 'month' ? `Ngày ${l}` : `${l}`}
                   />
-                  <Bar
-                    dataKey="count"
-                    fill="rgba(59,130,246,0.6)"
-                    radius={[4, 4, 0, 0]}
-                    maxBarSize={16}
-                  />
+                  <Bar dataKey="count" radius={[5, 5, 0, 0]} maxBarSize={freqView === 'week' ? 40 : 20}>
+                    {freqData.map((entry, index) => (
+                      <Cell
+                        key={index}
+                        fill={entry.count > 0 ? 'rgba(59,130,246,0.85)' : 'rgba(255,255,255,0.04)'}
+                      />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[180px] flex items-center justify-center text-slate-600 text-sm">
-                Chưa có buổi tập nào tháng này
+              <div className="h-[190px] flex flex-col items-center justify-center gap-2 text-slate-600">
+                <svg className="w-8 h-8 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                </svg>
+                <span className="text-sm">Chưa có buổi tập nào {freqView === 'month' ? 'tháng này' : 'tuần này'}</span>
               </div>
             )}
           </div>
@@ -425,7 +744,7 @@ export default function DashboardPage() {
               <span className="ml-auto w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
             </div>
 
-            <div className="flex-1 space-y-2">
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-0.5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
               {aiTips.length > 0 ? (
                 aiTips.map((tip, i) => (
                   <div
@@ -451,6 +770,86 @@ export default function DashboardPage() {
             >
               Xem tất cả gợi ý →
             </Link>
+          </div>
+        </div>
+
+        {/* ── Nutrition Summary ───────────────────────────────────── */}
+        <div className="rounded-2xl bg-white/5 border border-white/8 p-5">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h2 className="text-sm font-bold text-white">Dinh Dưỡng Hôm Nay</h2>
+              <p className="text-xs text-slate-500 mt-0.5 capitalize">
+                {new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowFoodAnalysis(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-600/15 border border-violet-500/20 text-violet-400 text-xs font-semibold hover:bg-violet-600/25 transition-colors"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                📸 AI
+              </button>
+              <Link href="/nutrition" className="text-xs text-slate-500 hover:text-blue-400 transition-colors font-medium">
+                Chi tiết →
+              </Link>
+            </div>
+          </div>
+
+          {/* Ring + Macros */}
+          <div className="flex gap-5 mb-5">
+            <div className="relative flex-none">
+              <CalRing current={caloriesToday} goal={goalCalories} />
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-base font-black text-white leading-none">{caloriesToday.toLocaleString()}</span>
+                <span className="text-[9px] text-slate-500 mt-0.5">/ {goalCalories.toLocaleString()}</span>
+                <span className="text-[9px] text-slate-600">kcal</span>
+              </div>
+            </div>
+            <div className="flex-1 flex flex-col justify-center gap-3">
+              {([
+                { label: 'Protein',   value: Math.round(nutritionTotals.protein), goal: goalProtein, unit: 'g', bar: 'bg-blue-500',    text: 'text-blue-400'    },
+                { label: 'Carbs',     value: Math.round(nutritionTotals.carbs),   goal: goalCarbs,   unit: 'g', bar: 'bg-yellow-400',  text: 'text-yellow-400'  },
+                { label: 'Chất béo', value: Math.round(nutritionTotals.fat),     goal: goalFat,     unit: 'g', bar: 'bg-rose-500',    text: 'text-rose-400'    },
+              ] as const).map(({ label, value, goal, unit, bar, text }) => (
+                <div key={label}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-semibold text-slate-500">{label}</span>
+                    <span className={cn('text-[10px] font-bold', text)}>
+                      {value}<span className="text-slate-600 font-normal"> / {goal}{unit}</span>
+                    </span>
+                  </div>
+                  <div className="h-1 rounded-full bg-white/5 overflow-hidden">
+                    <div className={cn('h-full rounded-full transition-all duration-700', bar)} style={{ width: `${Math.min((value / goal) * 100, 100)}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Meal breakdown */}
+          <div className="grid grid-cols-4 gap-2 pt-4 border-t border-white/5">
+            {([
+              { key: 'breakfast', icon: '🌅', label: 'Sáng'  },
+              { key: 'lunch',     icon: '☀️', label: 'Trưa'  },
+              { key: 'dinner',    icon: '🌙', label: 'Tối'   },
+              { key: 'snack',     icon: '🍎', label: 'Snack' },
+            ] as const).map(({ key, icon, label }) => {
+              const kcal = mealCalories[key];
+              return (
+                <Link key={key} href="/nutrition" className="rounded-xl bg-white/5 border border-white/8 p-2.5 text-center hover:bg-white/10 transition-colors">
+                  <p className="text-base mb-1">{icon}</p>
+                  <p className="text-[10px] text-slate-500 font-medium mb-0.5">{label}</p>
+                  <p className={cn('text-xs font-bold', kcal > 0 ? 'text-white' : 'text-slate-700')}>
+                    {kcal > 0 ? `${kcal} kcal` : '—'}
+                  </p>
+                </Link>
+              );
+            })}
           </div>
         </div>
 
@@ -483,6 +882,14 @@ export default function DashboardPage() {
         </div>
       </div>
       </div>
+
+      {showFoodAnalysis && (
+        <FoodAnalysisModal
+          date={today}
+          onLogged={() => qc.invalidateQueries({ queryKey: queryKeys.nutrition.logs(today) })}
+          onClose={() => setShowFoodAnalysis(false)}
+        />
+      )}
     </div>
   );
 }

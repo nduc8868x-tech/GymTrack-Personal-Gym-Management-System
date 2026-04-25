@@ -358,3 +358,66 @@ export async function getInsights(userId: string, period: 'week' | 'month') {
 
   return { period, summary, metrics };
 }
+
+// ─── Analyze food image ───────────────────────────────────────────────────────
+
+export async function analyzeFoodImage(imageBase64: string) {
+  const groq = getGroq();
+
+  type NonStream = Awaited<ReturnType<typeof groq.chat.completions.create>> & {
+    choices: { message: { content: string } }[];
+  };
+
+  const result = await Promise.race([
+    groq.chat.completions.create({
+      model: env.GROQ_MODEL,
+      messages: [
+        {
+          role: 'system',
+          content:
+            'Bạn là chuyên gia dinh dưỡng. Khi nhận được ảnh món ăn, hãy trả về DUY NHẤT một JSON object (không có text nào khác) với các trường: food_name (string, tiếng Việt), calories (number, kcal), protein_g (number), carbs_g (number), fat_g (number), serving_note (string, mô tả khẩu phần ước tính), confidence ("high"|"medium"|"low").',
+        },
+        {
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: imageBase64 } },
+            { type: 'text', text: 'Nhận diện món ăn và ước tính dinh dưỡng.' },
+          ] as never,
+        },
+      ],
+      stream: false,
+      max_tokens: 400,
+      temperature: 0.1,
+    }) as Promise<NonStream>,
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 20000)),
+  ]);
+
+  const text = result.choices[0]?.message?.content ?? '';
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    const err = new Error('Không thể nhận diện món ăn, vui lòng thử ảnh khác');
+    (err as Error & { code: string }).code = 'ANALYSIS_FAILED';
+    throw err;
+  }
+
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
+  } catch {
+    const err = new Error('Không thể nhận diện món ăn, vui lòng thử ảnh khác');
+    (err as Error & { code: string }).code = 'ANALYSIS_FAILED';
+    throw err;
+  }
+
+  return {
+    food_name:    String(parsed.food_name ?? 'Món ăn không rõ'),
+    calories:     Math.round(Number(parsed.calories ?? 0)),
+    protein_g:    Math.round(Number(parsed.protein_g ?? 0)),
+    carbs_g:      Math.round(Number(parsed.carbs_g ?? 0)),
+    fat_g:        Math.round(Number(parsed.fat_g ?? 0)),
+    serving_note: String(parsed.serving_note ?? ''),
+    confidence:   (['high', 'medium', 'low'] as const).includes(parsed.confidence as never)
+      ? (parsed.confidence as 'high' | 'medium' | 'low')
+      : 'low',
+  };
+}

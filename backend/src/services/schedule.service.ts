@@ -4,7 +4,7 @@ const exerciseInclude = {
   scheduled_exercises: {
     orderBy: { order_index: 'asc' as const },
     include: {
-      exercise: { select: { id: true, name: true, primary_muscle: true, equipment: true } },
+      exercise: { select: { id: true, name: true, primary_muscle: true, equipment: true, image_url: true } },
     },
   },
 };
@@ -177,7 +177,7 @@ export async function addScheduledExercise(
       ...(data.notes && { notes: data.notes }),
     },
     include: {
-      exercise: { select: { id: true, name: true, primary_muscle: true, equipment: true } },
+      exercise: { select: { id: true, name: true, primary_muscle: true, equipment: true, image_url: true } },
     },
   });
 }
@@ -214,7 +214,7 @@ export async function updateScheduledExercise(
       ...(data.notes !== undefined && { notes: data.notes }),
     },
     include: {
-      exercise: { select: { id: true, name: true, primary_muscle: true, equipment: true } },
+      exercise: { select: { id: true, name: true, primary_muscle: true, equipment: true, image_url: true } },
     },
   });
 }

@@ -8,6 +8,7 @@ import { queryKeys } from '@/lib/queryKeys';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n';
 import { usePageTitle } from '@/hooks/usePageTitle';
+import { MUSCLE_GROUPS } from '@/lib/constants';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -16,6 +17,7 @@ interface ExerciseRef {
   name: string;
   primary_muscle: string;
   equipment: string;
+  image_url?: string | null;
 }
 
 interface ScheduledExercise {
@@ -73,6 +75,27 @@ function formatTime(isoTime: string | null): string {
 
 // ─── Exercise Picker (inline mini picker) ─────────────────────────────────────
 
+const PICKER_MUSCLE_COLORS: Record<string, { bg: string; text: string; chip: string; chipActive: string }> = {
+  chest:     { bg: 'bg-red-500/10',    text: 'text-red-400',    chip: 'bg-red-500/10 text-red-400 border-red-500/20',    chipActive: 'bg-red-500/30 text-red-300 border-red-400/50' },
+  back:      { bg: 'bg-blue-500/10',   text: 'text-blue-400',   chip: 'bg-blue-500/10 text-blue-400 border-blue-500/20',   chipActive: 'bg-blue-500/30 text-blue-300 border-blue-400/50' },
+  legs:      { bg: 'bg-green-500/10',  text: 'text-green-400',  chip: 'bg-green-500/10 text-green-400 border-green-500/20',  chipActive: 'bg-green-500/30 text-green-300 border-green-400/50' },
+  shoulders: { bg: 'bg-yellow-500/10', text: 'text-yellow-400', chip: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20', chipActive: 'bg-yellow-500/30 text-yellow-300 border-yellow-400/50' },
+  arms:      { bg: 'bg-purple-500/10', text: 'text-purple-400', chip: 'bg-purple-500/10 text-purple-400 border-purple-500/20', chipActive: 'bg-purple-500/30 text-purple-300 border-purple-400/50' },
+  core:      { bg: 'bg-orange-500/10', text: 'text-orange-400', chip: 'bg-orange-500/10 text-orange-400 border-orange-500/20', chipActive: 'bg-orange-500/30 text-orange-300 border-orange-400/50' },
+  cardio:    { bg: 'bg-pink-500/10',   text: 'text-pink-400',   chip: 'bg-pink-500/10 text-pink-400 border-pink-500/20',   chipActive: 'bg-pink-500/30 text-pink-300 border-pink-400/50' },
+  full_body: { bg: 'bg-slate-500/10',  text: 'text-slate-400',  chip: 'bg-slate-500/10 text-slate-400 border-slate-500/20',  chipActive: 'bg-slate-500/30 text-slate-300 border-slate-400/50' },
+};
+
+const PICKER_MUSCLE_ICONS: Record<string, string> = {
+  chest: '💪', back: '🔙', legs: '🦵', shoulders: '🏋️',
+  arms: '💪', core: '🎯', cardio: '🏃', full_body: '⚡',
+};
+
+const PICKER_MUSCLE_LABELS: Record<string, string> = {
+  chest: 'Ngực', back: 'Lưng', legs: 'Chân', shoulders: 'Vai',
+  arms: 'Tay', core: 'Bụng', cardio: 'Cardio', full_body: 'Toàn thân',
+};
+
 function ExercisePickerInline({
   onSelect,
   onClose,
@@ -81,12 +104,14 @@ function ExercisePickerInline({
   onClose: () => void;
 }) {
   const [search, setSearch] = useState('');
+  const [muscleFilter, setMuscleFilter] = useState('');
 
-  const { data: exercises = [] } = useQuery({
-    queryKey: queryKeys.exercises.all({ search }),
+  const { data: exercises = [], isLoading } = useQuery({
+    queryKey: queryKeys.exercises.all({ search, muscle: muscleFilter }),
     queryFn: () => {
-      const params = new URLSearchParams({ limit: '50' });
+      const params = new URLSearchParams({ limit: '100' });
       if (search) params.set('search', search);
+      if (muscleFilter) params.set('muscle', muscleFilter);
       return api
         .get<{ data: ExerciseRef[] }>(`/exercises?${params}`)
         .then((r) => r.data.data);
@@ -95,36 +120,110 @@ function ExercisePickerInline({
 
   return (
     <div className="fixed inset-0 bg-black/80 z-[60] flex items-end sm:items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-[#1e1f35] rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[70vh]">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
-          <h3 className="font-bold text-sm text-white">Chọn bài tập</h3>
-          <button onClick={onClose} className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center text-slate-400 hover:text-white">
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+      <div className="w-full max-w-lg bg-[#1e1f35] rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
+          <h3 className="font-bold text-base text-white">Chọn bài tập</h3>
+          <button onClick={onClose} className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
-        <div className="px-4 py-2 border-b border-white/5">
-          <input
-            autoFocus
-            type="text"
-            placeholder="Tìm kiếm..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-slate-600 outline-none focus:border-blue-600/50"
-          />
+
+        {/* Search */}
+        <div className="px-5 pt-3 pb-2">
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              autoFocus
+              type="text"
+              placeholder="Tìm kiếm bài tập..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full rounded-xl border border-white/10 bg-white/5 pl-9 pr-3 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none focus:border-blue-500/50 focus:bg-white/8 transition-colors"
+            />
+          </div>
         </div>
-        <div className="flex-1 overflow-y-auto divide-y divide-white/5">
-          {exercises.map((ex) => (
+
+        {/* Muscle group filter chips */}
+        <div className="px-5 pb-3">
+          <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
             <button
-              key={ex.id}
-              onClick={() => onSelect(ex)}
-              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors"
+              onClick={() => setMuscleFilter('')}
+              className={cn(
+                'flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
+                muscleFilter === ''
+                  ? 'bg-blue-500/30 text-blue-300 border-blue-400/50'
+                  : 'bg-white/5 text-slate-400 border-white/10 hover:bg-white/10'
+              )}
             >
-              <div>
-                <p className="text-sm font-medium text-white">{ex.name}</p>
-                <p className="text-xs text-slate-500 capitalize">{ex.primary_muscle.replace('_', ' ')}</p>
-              </div>
+              Tất cả
             </button>
-          ))}
+            {MUSCLE_GROUPS.map((m) => {
+              const c = PICKER_MUSCLE_COLORS[m];
+              const isActive = muscleFilter === m;
+              return (
+                <button
+                  key={m}
+                  onClick={() => setMuscleFilter(muscleFilter === m ? '' : m)}
+                  className={cn(
+                    'flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
+                    isActive ? c?.chipActive : (c?.chip + ' hover:opacity-80')
+                  )}
+                >
+                  <span>{PICKER_MUSCLE_ICONS[m]}</span>
+                  {PICKER_MUSCLE_LABELS[m] ?? m}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Exercise grid */}
+        <div className="flex-1 overflow-y-auto px-5 pb-4">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12 text-slate-500 text-sm">Đang tải...</div>
+          ) : exercises.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-slate-500 text-sm gap-2">
+              <span className="text-3xl">🔍</span>
+              Không tìm thấy bài tập
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {exercises.map((ex) => {
+                const colors = PICKER_MUSCLE_COLORS[ex.primary_muscle];
+                const icon = PICKER_MUSCLE_ICONS[ex.primary_muscle] ?? '⚡';
+                return (
+                  <button
+                    key={ex.id}
+                    onClick={() => onSelect(ex)}
+                    className="group relative rounded-xl border border-white/8 bg-white/3 hover:bg-white/8 hover:border-white/15 transition-all overflow-hidden text-left"
+                  >
+                    {/* Thumbnail */}
+                    <div className={cn('w-full aspect-video flex items-center justify-center overflow-hidden', colors?.bg ?? 'bg-slate-500/10')}>
+                      {ex.image_url ? (
+                        <img
+                          src={ex.image_url}
+                          alt={ex.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <span className="text-3xl select-none">{icon}</span>
+                      )}
+                    </div>
+                    {/* Info */}
+                    <div className="px-3 py-2.5">
+                      <p className="text-sm font-semibold text-white leading-tight line-clamp-2">{ex.name}</p>
+                      <span className={cn('inline-block mt-1.5 text-[10px] font-medium px-2 py-0.5 rounded-full', colors?.bg ?? 'bg-slate-500/10', colors?.text ?? 'text-slate-400')}>
+                        {PICKER_MUSCLE_LABELS[ex.primary_muscle] ?? ex.primary_muscle.replace('_', ' ')}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>

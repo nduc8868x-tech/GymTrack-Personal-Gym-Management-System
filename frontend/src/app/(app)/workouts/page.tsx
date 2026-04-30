@@ -29,7 +29,7 @@ interface PlannedEx {
   sets: number;
   reps: number;
   weight_kg: number | null;
-  exercise: { id: string; name: string; primary_muscle: string; equipment: string };
+  exercise: { id: string; name: string; primary_muscle: string; equipment: string; image_url?: string | null };
 }
 
 interface TodaySchedule {
@@ -71,6 +71,7 @@ export default function WorkoutsPage() {
   const { t } = useT();
   usePageTitle('Tập luyện');
   const [starting, setStarting] = useState(false);
+  const [previewEx, setPreviewEx] = useState<PlannedEx['exercise'] | null>(null);
 
   const todayDateStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const [selectedDateStr, setSelectedDateStr] = useState(todayDateStr);
@@ -368,6 +369,16 @@ export default function WorkoutsPage() {
                       {ex.sets} × {ex.reps}
                       {ex.weight_kg != null ? ` @ ${ex.weight_kg}kg` : ''}
                     </span>
+                    <button
+                      onClick={() => setPreviewEx(ex.exercise)}
+                      className="w-7 h-7 rounded-lg bg-white/5 hover:bg-violet-500/20 flex items-center justify-center text-slate-500 hover:text-violet-400 transition-colors shrink-0"
+                      title="Xem ảnh bài tập"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    </button>
                   </div>
                 ))}
               </div>
@@ -537,6 +548,58 @@ export default function WorkoutsPage() {
         </div>
       </div>
       </div>
+
+      {/* ── Exercise image preview modal ──────────────────────────── */}
+      {previewEx && (
+        <div
+          className="fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4"
+          onClick={() => setPreviewEx(null)}
+        >
+          <div
+            className="w-full max-w-sm bg-[#1e1f35] rounded-2xl border border-white/10 shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Image area */}
+            <div className="relative w-full aspect-video bg-white/5 flex items-center justify-center overflow-hidden">
+              {previewEx.image_url ? (
+                <img
+                  src={previewEx.image_url}
+                  alt={previewEx.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="flex flex-col items-center gap-2 text-slate-600">
+                  <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <p className="text-xs">Chưa có ảnh</p>
+                </div>
+              )}
+              <button
+                onClick={() => setPreviewEx(null)}
+                className="absolute top-3 right-3 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center text-white/80 hover:text-white hover:bg-black/80 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            {/* Info */}
+            <div className="px-5 py-4">
+              <p className="font-bold text-white text-base">{previewEx.name}</p>
+              <p className="text-xs text-slate-500 capitalize mt-1">{previewEx.primary_muscle.replace('_', ' ')} · {previewEx.equipment.replace('_', ' ')}</p>
+              {!previewEx.image_url && (
+                <p className="text-xs text-slate-600 mt-3">
+                  Thêm ảnh trong{' '}
+                  <Link href={`/workouts/exercises/${previewEx.id}`} className="text-blue-400 hover:underline" onClick={() => setPreviewEx(null)}>
+                    thư viện bài tập
+                  </Link>
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -67,9 +67,4 @@ app.post('/internal/reminders/check', reminderHandler);
 // Global error handler
 app.use(errorHandler);
 
-app.listen(env.PORT, () => {
-  console.log(`🚀 GymTrack API running on http://localhost:${env.PORT}`);
-  console.log(`   Environment: ${env.NODE_ENV}`);
-});
-
 export default app;

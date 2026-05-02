@@ -1,8 +1,6 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
-import { useState, useCallback } from 'react';
+import { Suspense, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2, X, Plus } from 'lucide-react';
@@ -28,7 +26,7 @@ interface FoodResult {
 
 let searchTimer: ReturnType<typeof setTimeout>;
 
-export default function FoodLogPage() {
+function FoodLogContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const qc = useQueryClient();
@@ -368,5 +366,13 @@ export default function FoodLogPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function FoodLogPage() {
+  return (
+    <Suspense>
+      <FoodLogContent />
+    </Suspense>
   );
 }

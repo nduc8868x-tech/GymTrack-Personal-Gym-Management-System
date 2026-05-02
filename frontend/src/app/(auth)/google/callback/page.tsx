@@ -1,14 +1,12 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/authStore';
 import { useT } from '@/lib/i18n';
 
-export default function GoogleCallbackPage() {
+function GoogleCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setUser } = useAuthStore();
@@ -25,13 +23,11 @@ export default function GoogleCallbackPage() {
 
     localStorage.setItem('access_token', token);
 
-    // Fetch current user to populate store
     api
       .get<{ data: { id: string; email: string; name: string; avatar_url?: string } }>('/auth/me')
       .then((res) => {
         const u = res.data.data;
         setUser({ id: u.id, email: u.email, name: u.name, avatar_url: u.avatar_url });
-        // Redirect to onboarding if no height set, otherwise dashboard
         if (!('height_cm' in u) || (u as { height_cm?: number }).height_cm == null) {
           router.replace('/onboarding');
         } else {
@@ -50,5 +46,13 @@ export default function GoogleCallbackPage() {
         <p className="text-sm text-muted-foreground">{t.auth.signingIn}</p>
       </div>
     </div>
+  );
+}
+
+export default function GoogleCallbackPage() {
+  return (
+    <Suspense>
+      <GoogleCallbackContent />
+    </Suspense>
   );
 }

@@ -143,7 +143,6 @@ export default function AiCoachPage() {
       <div className="flex-none flex items-center justify-between px-6 py-5 border-b border-white/5">
         <div>
           <h1 className="text-2xl font-black text-white tracking-tight">{t.aiCoach.title}</h1>
-          <p className="text-xs text-slate-500 mt-0.5">{t.aiCoach.subtitle}</p>
         </div>
         <button
           onClick={() => setShowNew((v) => !v)}

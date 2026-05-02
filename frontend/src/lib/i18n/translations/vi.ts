@@ -131,7 +131,6 @@ const vi: Translations = {
     title: 'Tập luyện',
     startWorkout: 'Bắt đầu tập',
     history: 'Lịch sử',
-    exercises: 'Bài tập',
     noSessions: 'Chưa có buổi tập nào',
     noSessionsDesc: 'Bắt đầu buổi tập đầu tiên để xem lịch sử tại đây',
     session: {

@@ -129,7 +129,6 @@ const en = {
     title: 'Workouts',
     startWorkout: 'Start workout',
     history: 'History',
-    exercises: 'Exercises',
     noSessions: 'No workouts yet',
     noSessionsDesc: 'Start your first workout session to see history here',
     session: {

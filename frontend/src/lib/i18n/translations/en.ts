@@ -128,7 +128,6 @@ const en = {
   workouts: {
     title: 'Workouts',
     startWorkout: 'Start workout',
-    history: 'History',
     noSessions: 'No workouts yet',
     noSessionsDesc: 'Start your first workout session to see history here',
     session: {

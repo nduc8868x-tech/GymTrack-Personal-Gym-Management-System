@@ -22,6 +22,7 @@ function GoogleCallbackContent() {
     }
 
     localStorage.setItem('access_token', token);
+    document.cookie = `has_session=1; path=/; max-age=${7 * 24 * 3600}; SameSite=Lax`;
 
     api
       .get<{ data: { id: string; email: string; name: string; avatar_url?: string } }>('/auth/me')

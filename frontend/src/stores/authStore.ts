@@ -28,6 +28,7 @@ export const useAuthStore = create<AuthState>()(
         })),
       logout: () => {
         localStorage.removeItem('access_token');
+        document.cookie = 'has_session=; path=/; max-age=0';
         set({ user: null, isAuthenticated: false });
       },
     }),

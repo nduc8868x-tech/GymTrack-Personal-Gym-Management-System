@@ -20,8 +20,8 @@ export function middleware(request: NextRequest) {
   // Allow root redirect
   if (pathname === '/') return NextResponse.next();
 
-  // Check for refresh_token cookie as auth indicator
-  const hasSession = request.cookies.has('refresh_token');
+  // Check for session indicator cookie set by frontend after login
+  const hasSession = request.cookies.has('has_session') || request.cookies.has('refresh_token');
 
   if (!hasSession) {
     const loginUrl = new URL('/login', request.url);

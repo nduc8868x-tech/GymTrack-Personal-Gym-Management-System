@@ -55,6 +55,7 @@ export default function RegisterPage() {
       });
 
       localStorage.setItem('access_token', res.data.data.access_token);
+      document.cookie = `has_session=1; path=/; max-age=${7 * 24 * 3600}; SameSite=Lax`;
       setUser(res.data.data.user);
       router.push('/onboarding');
     } catch (err: unknown) {
